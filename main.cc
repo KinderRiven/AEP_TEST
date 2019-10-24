@@ -109,27 +109,25 @@ void randomwrite(struct thread_options* opt, struct test_result* result)
     uint64_t address = (uint64_t)opt->addr_start;
     size_t block_size = opt->block_size;
     uint64_t sum_time = 0;
-    // size_t count = opt->count; // opt->write_amount / opt->block_size;
     size_t count = opt->write_amount / opt->block_size;
     result->count = count;
     size_t run_count = 0;
     uint8_t* data = (uint8_t*)malloc(block_size);
 
-#ifdef USE_RANDOM_FUNC
-    size_t max_range = (opt->addr_end - opt->addr_start) / block_size;
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> range(0, max_range - 1);
-#endif
+    // #ifdef USE_RANDOM_FUNC
+    //    size_t max_range = (opt->addr_end - opt->addr_start) / block_size;
+    //    std::random_device rd;
+    //   std::mt19937 gen(rd());
+    //    std::uniform_int_distribution<> range(0, max_range - 1);
+    // #endif
 
-#ifdef LARGE_GRAN_TIME
     timer.Start();
-#endif
+
     for (size_t i = 0; i < count; i++) {
-#ifdef USE_RANDOM_FUNC
-        uint64_t seed = range(gen);
-        address = (uint8_t*)(opt->addr_start + seed * block_size);
-#else
+        //#ifdef USE_RANDOM_FUNC
+        //       uint64_t seed = range(gen);
+        //       address = (uint8_t*)(opt->addr_start + seed * block_size);
+        //#else
         address += (block_size + RANDOM_SKIP); // skip 256B
         if ((uint64_t)address >= (uint64_t)opt->addr_end) {
             address = (uint64_t)opt->addr_start;
@@ -140,13 +138,11 @@ void randomwrite(struct thread_options* opt, struct test_result* result)
             address &= (~((uint64_t)ALIGN_SIZE - 1));
             assert(address % ALIGN_SIZE == 0);
         }
-#ifdef NO_ALIGN
-        address += 3;
-#endif
-#endif
-#ifndef LARGE_GRAN_TIME
+        // #ifdef NO_ALIGN
+        //       address += 3;
+        // #endif
+        // #endif
         timer.Start();
-#endif
 #ifdef PMDK_MEMCPY
         // pmem_memmove_persist((void *)addr, (void *)data, block_size);
         pmem_memcpy_persist((void*)addr, (void*)data, block_size);
@@ -156,10 +152,6 @@ void randomwrite(struct thread_options* opt, struct test_result* result)
         // memcpy((void *)addr, (void *)data, block_size);
         // persist_data((void *)addr, block_size);
         nvmem_memcpy((char*)address, (char*)data, block_size);
-#endif
-#ifndef LARGE_GRAN_TIME
-        timer.Stop();
-        sum_time += timer.Get();
 #endif
         if (use_clock) // only used in read-wriite mixed workload
         {
@@ -172,11 +164,9 @@ void randomwrite(struct thread_options* opt, struct test_result* result)
             }
         }
     }
-#ifdef LARGE_GRAN_TIME
+
     timer.Stop();
     sum_time = timer.Get();
-#endif
-
     result->time = sum_time;
     result->latency = result->time / result->count;
     result->throughput = (1000000000 / result->latency) * block_size / (1024 * 1024);
@@ -196,13 +186,9 @@ void seqwrite(struct thread_options* opt, struct test_result* result)
     size_t run_count = 0;
     uint8_t* data = (uint8_t*)malloc(block_size);
 
-#ifdef LARGE_GRAN_TIME
     timer.Start();
-#endif
+
     for (size_t i = 0; i < count; i++) {
-#ifndef LARGE_GRAN_TIME
-        timer.Start();
-#endif
 #ifdef PMDK_MEMCPY
         // pmem_memmove_persist((void *)address, (void *)data, block_size);
         pmem_memcpy_persist((void*)address, (void*)data, block_size);
@@ -211,18 +197,14 @@ void seqwrite(struct thread_options* opt, struct test_result* result)
 #else
         // memcpy((void *)address, (void *)data, block_size);
         // persist_data((void *)address, block_size);
-        // printf("start!\n");
         nvmem_memcpy((char*)address, (char*)data, block_size);
-        // printf("end!\n");
-#endif
-#ifndef LARGE_GRAN_TIME
-        timer.Stop();
-        sum_time += timer.Get();
 #endif
         address += block_size;
+
         if ((uint64_t)address >= (uint64_t)opt->addr_end) {
             address = (uint64_t)opt->addr_start;
         }
+
         if (use_clock) // only used in read-wriite mixed workload
         {
             run_count++;
@@ -235,11 +217,8 @@ void seqwrite(struct thread_options* opt, struct test_result* result)
         }
     }
 
-#ifdef LARGE_GRAN_TIME
     timer.Stop();
     sum_time = timer.Get();
-#endif
-
     result->time = sum_time;
     result->latency = result->time / result->count;
     result->throughput = (1000000000 / result->latency) * block_size / (1024 * 1024);
@@ -261,45 +240,40 @@ void randomread(struct thread_options* opt, struct test_result* result)
     uint8_t* data = (uint8_t*)malloc(block_size);
     memset(data, 0, block_size);
 
-#ifdef USE_RANDOM_FUNC
-    size_t max_range = (opt->addr_end - opt->addr_start) / block_size;
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<> range(0, max_range - 1);
-#endif
+    // #ifdef USE_RANDOM_FUNC
+    //     size_t max_range = (opt->addr_end - opt->addr_start) / block_size;
+    //    std::random_device rd;
+    //    std::mt19937 gen(rd());
+    //    std::uniform_int_distribution<> range(0, max_range - 1);
+    // #endif
 
-#ifdef LARGE_GRAN_TIME
     timer.Start();
-#endif
 
     for (size_t i = 0; i < count; i++) {
-#ifdef USE_RANDOM_FUNC
-        uint64_t seed = range(gen);
-        address = (uint8_t*)(opt->addr_start + seed * block_size);
-#else
+        //#ifdef USE_RANDOM_FUNC
+        //       uint64_t seed = range(gen);
+        //       address = (uint8_t*)(opt->addr_start + seed * block_size);
+        //#endif
+
         address += (block_size + RANDOM_SKIP); // skip 1KB
+
         if ((uint64_t)address > (uint64_t)opt->addr_end) {
             address = (uint64_t)opt->addr_start;
         }
+
         if (address % ALIGN_SIZE != 0) // cache line size align
         {
             address += ALIGN_SIZE;
             address &= (~((uint64_t)ALIGN_SIZE - 1));
             assert(address % ALIGN_SIZE == 0);
         }
-#ifdef NO_ALIGN
-        address += 3;
-#endif
-#endif
-#ifndef LARGE_GRAN_TIME
-        timer.Start();
-#endif
+        //#ifdef NO_ALIGN
+        //       address += 3;
+        //#endif
+
         memcpy((void*)data, (void*)address, block_size);
         // asm_lfence();
-#ifndef LARGE_GRAN_TIME
-        timer.Stop();
-        sum_time += timer.Get();
-#endif
+
         if (use_clock) // only used in read-wriite mixed workload
         {
             run_count++;
@@ -311,11 +285,9 @@ void randomread(struct thread_options* opt, struct test_result* result)
             }
         }
     }
-#ifdef LARGE_GRAN_TIME
+
     timer.Stop();
     sum_time = timer.Get();
-#endif
-
     result->time = sum_time;
     result->latency = result->time / result->count;
     result->throughput = (1000000000 / result->latency) * block_size / (1024 * 1024);
@@ -335,22 +307,18 @@ void seqread(struct thread_options* opt, struct test_result* result)
     result->count = count;
     uint8_t* data = (uint8_t*)malloc(block_size);
 
-#ifdef LARGE_GRAN_TIME
     timer.Start();
-#endif
+
     for (size_t i = 0; i < count; i++) {
-#ifndef LARGE_GRAN_TIME
-        timer.Start();
-#endif
+
         memcpy((void*)data, (void*)address, block_size);
-#ifndef LARGE_GRAN_TIME
-        timer.Stop();
-        sum_time += timer.Get();
-#endif
+
         address += block_size;
+
         if ((uint64_t)address >= (uint64_t)opt->addr_end) {
             address = (uint64_t)opt->addr_start;
         }
+
         if (use_clock) // only used in read-wriite mixed workload
         {
             run_count++;
@@ -362,11 +330,9 @@ void seqread(struct thread_options* opt, struct test_result* result)
             }
         }
     }
-#ifdef LARGE_GRAN_TIME
+
     timer.Stop();
     sum_time = timer.Get();
-#endif
-
     result->time = sum_time;
     result->latency = result->time / result->count;
     result->throughput = (1000000000 / result->latency) * block_size / (1024 * 1024);

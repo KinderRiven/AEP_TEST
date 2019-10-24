@@ -142,7 +142,6 @@ void randomwrite(struct thread_options* opt, struct test_result* result)
         //       address += 3;
         // #endif
         // #endif
-        timer.Start();
 #ifdef PMDK_MEMCPY
         // pmem_memmove_persist((void *)addr, (void *)data, block_size);
         pmem_memcpy_persist((void*)addr, (void*)data, block_size);

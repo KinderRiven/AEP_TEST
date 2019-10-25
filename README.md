@@ -7,7 +7,7 @@
 # 3. use dax mode to mount pmem device
 # mount -o dax /dev/pmem0 /home/pmem0
 
-# 4. create a empty file as memory pool
+# 4. create a empty file as memory pool (64GB)
 # dd if=/dev/zero of=/home/pmem0/pm bs=$((64*1024)) count=$((1024*1024))
 
 # 5. do make

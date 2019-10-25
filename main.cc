@@ -120,27 +120,29 @@ void randomwrite(struct thread_options* opt, struct test_result* result)
     //    std::uniform_int_distribution<> range(0, max_range - 1);
     // #endif
 
+    size_t skip_step = block_size < RANDOM_SKIP ? RANDOM_SKIP : block_size + RANDOM_SKIP;
+
     timer.Start();
     for (size_t i = 0; i < count; i++) {
         //#ifdef USE_RANDOM_FUNC
         //       uint64_t seed = range(gen);
         //       address = (uint8_t*)(opt->addr_start + seed * block_size);
         //#else
-        address += (block_size + RANDOM_SKIP); // skip 256B
+        address += skip_step; // skip 256B
 
         if ((uint64_t)address >= (uint64_t)opt->addr_end) {
             address = (uint64_t)opt->addr_start;
         }
 
-        if (address % ALIGN_SIZE != 0) // cache line size align
-        {
-            address += ALIGN_SIZE;
-            address &= (~((uint64_t)ALIGN_SIZE - 1));
-            assert(address % ALIGN_SIZE == 0);
-        }
-            // #ifdef NO_ALIGN
-            //       address += 3;
-            // #endif
+        // if (address % ALIGN_SIZE != 0) // cache line size align
+        // {
+        //    address += ALIGN_SIZE;
+        //    address &= (~((uint64_t)ALIGN_SIZE - 1));
+        //    assert(address % ALIGN_SIZE == 0);
+        // }
+        // #ifdef NO_ALIGN
+        //       address += 3;
+        // #endif
 #ifdef PMDK_MEMCPY
         // pmem_memmove_persist((void *)addr, (void *)data, block_size);
         pmem_memcpy_persist((void*)addr, (void*)data, block_size);

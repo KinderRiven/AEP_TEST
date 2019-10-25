@@ -14,13 +14,12 @@
 // #include <fcntl.h>
 // #include <sys/mman.h>
 
-// #define THREAD_BIND_CPU
-// #define PM_USED
-// #define PMDK_USED
+#define THREAD_BIND_CPU
+#define PM_USED
+#define PMDK_USED
 // #define PMDK_MEMCPY
 // #define USE_RANDOM_FUNC
-#define NO_ALIGN
-#define LARGE_GRAN_TIME
+// #define NO_ALIGN
 #define RANDOM_SKIP (1024)
 #define PMEM_POOL_SIZE ((size_t)450 * 1024 * 1024 * 1024)
 
@@ -122,26 +121,26 @@ void randomwrite(struct thread_options* opt, struct test_result* result)
     // #endif
 
     timer.Start();
-
     for (size_t i = 0; i < count; i++) {
         //#ifdef USE_RANDOM_FUNC
         //       uint64_t seed = range(gen);
         //       address = (uint8_t*)(opt->addr_start + seed * block_size);
         //#else
         address += (block_size + RANDOM_SKIP); // skip 256B
+
         if ((uint64_t)address >= (uint64_t)opt->addr_end) {
             address = (uint64_t)opt->addr_start;
         }
+
         if (address % ALIGN_SIZE != 0) // cache line size align
         {
             address += ALIGN_SIZE;
             address &= (~((uint64_t)ALIGN_SIZE - 1));
             assert(address % ALIGN_SIZE == 0);
         }
-        // #ifdef NO_ALIGN
-        //       address += 3;
-        // #endif
-        // #endif
+            // #ifdef NO_ALIGN
+            //       address += 3;
+            // #endif
 #ifdef PMDK_MEMCPY
         // pmem_memmove_persist((void *)addr, (void *)data, block_size);
         pmem_memcpy_persist((void*)addr, (void*)data, block_size);
@@ -163,8 +162,8 @@ void randomwrite(struct thread_options* opt, struct test_result* result)
             }
         }
     }
-
     timer.Stop();
+
     sum_time = timer.Get();
     result->time = sum_time;
     result->latency = result->time / result->count;
@@ -253,7 +252,6 @@ void randomread(struct thread_options* opt, struct test_result* result)
         //       uint64_t seed = range(gen);
         //       address = (uint8_t*)(opt->addr_start + seed * block_size);
         //#endif
-
         address += (block_size + RANDOM_SKIP); // skip 1KB
 
         if ((uint64_t)address > (uint64_t)opt->addr_end) {
@@ -266,6 +264,7 @@ void randomread(struct thread_options* opt, struct test_result* result)
             address &= (~((uint64_t)ALIGN_SIZE - 1));
             assert(address % ALIGN_SIZE == 0);
         }
+
         //#ifdef NO_ALIGN
         //       address += 3;
         //#endif

@@ -14,11 +14,10 @@
 // #include <fcntl.h>
 // #include <sys/mman.h>
 
+#define ASSERT_VERIFY
 #define THREAD_BIND_CPU
 #define PM_USED
 #define PMDK_USED
-// #define PMDK_MEMCPY
-// #define USE_RANDOM_FUNC
 // #define NO_ALIGN
 #define RANDOM_SKIP (1024)
 #define PMEM_POOL_SIZE ((size_t)450 * 1024 * 1024 * 1024)
@@ -33,7 +32,7 @@ static int time_is_over = 0;
 #define S_READ (3)
 #define S_MIXED (4)
 #define R_MIXED (5)
-#define ALIGN_SIZE (64)
+#define ALIGN_SIZE (256)
 
 struct test_result {
     uint64_t time;
@@ -113,59 +112,45 @@ void randomwrite(struct thread_options* opt, struct test_result* result)
     size_t run_count = 0;
     uint8_t* data = (uint8_t*)malloc(block_size);
 
-    // #ifdef USE_RANDOM_FUNC
-    //    size_t max_range = (opt->addr_end - opt->addr_start) / block_size;
-    //    std::random_device rd;
-    //   std::mt19937 gen(rd());
-    //    std::uniform_int_distribution<> range(0, max_range - 1);
-    // #endif
+    if (address % ALIGN_SIZE != 0) {
+        address += ALIGN_SIZE;
+        address &= (~((uint64_t)ALIGN_SIZE - 1));
+        assert(address % ALIGN_SIZE == 0);
+    }
 
     size_t skip_step = block_size < RANDOM_SKIP ? RANDOM_SKIP : block_size + RANDOM_SKIP;
-
     timer.Start();
+
     for (size_t i = 0; i < count; i++) {
-        //#ifdef USE_RANDOM_FUNC
-        //       uint64_t seed = range(gen);
-        //       address = (uint8_t*)(opt->addr_start + seed * block_size);
-        //#else
+        // memcpy((void *)addr, (void *)data, block_size);
+        // persist_data((void *)addr, block_size);
+        nvmem_memcpy((char*)address, (char*)data, block_size);
         address += skip_step; // skip 256B
 
         if ((uint64_t)address >= (uint64_t)opt->addr_end) {
             address = (uint64_t)opt->addr_start;
+            if (address % ALIGN_SIZE != 0) {
+                address += ALIGN_SIZE;
+                address &= (~((uint64_t)ALIGN_SIZE - 1));
+                assert(address % ALIGN_SIZE == 0);
+            }
         }
 
-        // if (address % ALIGN_SIZE != 0) // cache line size align
-        // {
-        //    address += ALIGN_SIZE;
-        //    address &= (~((uint64_t)ALIGN_SIZE - 1));
-        //    assert(address % ALIGN_SIZE == 0);
-        // }
-        // #ifdef NO_ALIGN
-        //       address += 3;
-        // #endif
-#ifdef PMDK_MEMCPY
-        // pmem_memmove_persist((void *)addr, (void *)data, block_size);
-        pmem_memcpy_persist((void*)addr, (void*)data, block_size);
-        // pmem_memmove_nodrain((void *)addr, (void *)data, block_size);
-        // pmem_memcpy_nodrain((void *)addr, (void *)data, block_size);
-#else
-        // memcpy((void *)addr, (void *)data, block_size);
-        // persist_data((void *)addr, block_size);
-        nvmem_memcpy((char*)address, (char*)data, block_size);
+#ifdef ASSERT_VERIFY
+        assert(address % ALIGN_SIZE == 0); // must align with 256B
 #endif
-        if (use_clock) // only used in read-wriite mixed workload
-        {
+
+        if (use_clock) {
             run_count++;
             if (time_is_over) {
                 result->count = run_count;
                 break;
             } else {
-                i = 0; // while(1)
+                i = 0;
             }
         }
     }
     timer.Stop();
-
     sum_time = timer.Get();
     result->time = sum_time;
     result->latency = result->time / result->count;
@@ -186,27 +171,32 @@ void seqwrite(struct thread_options* opt, struct test_result* result)
     size_t run_count = 0;
     uint8_t* data = (uint8_t*)malloc(block_size);
 
+    if (address % ALIGN_SIZE != 0) {
+        address += ALIGN_SIZE;
+        address &= (~((uint64_t)ALIGN_SIZE - 1));
+        assert(address % ALIGN_SIZE == 0);
+    }
+
     timer.Start();
 
     for (size_t i = 0; i < count; i++) {
-#ifdef PMDK_MEMCPY
-        // pmem_memmove_persist((void *)address, (void *)data, block_size);
-        pmem_memcpy_persist((void*)address, (void*)data, block_size);
-        // pmem_memmove_nodrain((void *)addressr, (void *)data, block_size);
-        // pmem_memcpy_nodrain((void *)address, (void *)data, block_size);
-#else
+
         // memcpy((void *)address, (void *)data, block_size);
         // persist_data((void *)address, block_size);
         nvmem_memcpy((char*)address, (char*)data, block_size);
-#endif
-        address += block_size;
+
+        address += block_size; // seq
 
         if ((uint64_t)address >= (uint64_t)opt->addr_end) {
             address = (uint64_t)opt->addr_start;
+            if (address % ALIGN_SIZE != 0) {
+                address += ALIGN_SIZE;
+                address &= (~((uint64_t)ALIGN_SIZE - 1));
+                assert(address % ALIGN_SIZE == 0);
+            }
         }
 
-        if (use_clock) // only used in read-wriite mixed workload
-        {
+        if (use_clock) {
             run_count++;
             if (time_is_over) {
                 result->count = run_count;
@@ -240,42 +230,35 @@ void randomread(struct thread_options* opt, struct test_result* result)
     uint8_t* data = (uint8_t*)malloc(block_size);
     memset(data, 0, block_size);
 
-    // #ifdef USE_RANDOM_FUNC
-    //     size_t max_range = (opt->addr_end - opt->addr_start) / block_size;
-    //    std::random_device rd;
-    //    std::mt19937 gen(rd());
-    //    std::uniform_int_distribution<> range(0, max_range - 1);
-    // #endif
+    if (address % ALIGN_SIZE != 0) {
+        address += ALIGN_SIZE;
+        address &= (~((uint64_t)ALIGN_SIZE - 1));
+        assert(address % ALIGN_SIZE == 0);
+    }
 
+    size_t skip_step = block_size < RANDOM_SKIP ? RANDOM_SKIP : block_size + RANDOM_SKIP;
     timer.Start();
 
     for (size_t i = 0; i < count; i++) {
-        //#ifdef USE_RANDOM_FUNC
-        //       uint64_t seed = range(gen);
-        //       address = (uint8_t*)(opt->addr_start + seed * block_size);
-        //#endif
-        address += (block_size + RANDOM_SKIP); // skip 1KB
+
+        memcpy((void*)data, (void*)address, block_size);
+        asm_lfence();
+        address += skip_step; // skip 1KB
 
         if ((uint64_t)address > (uint64_t)opt->addr_end) {
             address = (uint64_t)opt->addr_start;
+            if (address % ALIGN_SIZE != 0) {
+                address += ALIGN_SIZE;
+                address &= (~((uint64_t)ALIGN_SIZE - 1));
+                assert(address % ALIGN_SIZE == 0);
+            }
         }
 
-        if (address % ALIGN_SIZE != 0) // cache line size align
-        {
-            address += ALIGN_SIZE;
-            address &= (~((uint64_t)ALIGN_SIZE - 1));
-            assert(address % ALIGN_SIZE == 0);
-        }
+#ifdef ASSERT_VERIFY
+        assert(address % ALIGN_SIZE == 0); // must align with 256B
+#endif
 
-        //#ifdef NO_ALIGN
-        //       address += 3;
-        //#endif
-
-        memcpy((void*)data, (void*)address, block_size);
-        // asm_lfence();
-
-        if (use_clock) // only used in read-wriite mixed workload
-        {
+        if (use_clock) {
             run_count++;
             if (time_is_over) {
                 result->count = run_count;
@@ -307,26 +290,35 @@ void seqread(struct thread_options* opt, struct test_result* result)
     result->count = count;
     uint8_t* data = (uint8_t*)malloc(block_size);
 
+    if (address % ALIGN_SIZE != 0) {
+        address += ALIGN_SIZE;
+        address &= (~((uint64_t)ALIGN_SIZE - 1));
+        assert(address % ALIGN_SIZE == 0);
+    }
+
     timer.Start();
 
     for (size_t i = 0; i < count; i++) {
-
         memcpy((void*)data, (void*)address, block_size);
-
+        asm_lfence();
         address += block_size;
 
         if ((uint64_t)address >= (uint64_t)opt->addr_end) {
             address = (uint64_t)opt->addr_start;
+            if (address % ALIGN_SIZE != 0) {
+                address += ALIGN_SIZE;
+                address &= (~((uint64_t)ALIGN_SIZE - 1));
+                assert(address % ALIGN_SIZE == 0);
+            }
         }
 
-        if (use_clock) // only used in read-wriite mixed workload
-        {
+        if (use_clock) {
             run_count++;
             if (time_is_over) {
                 result->count = run_count;
                 break;
             } else {
-                i = 0; // while(1)
+                i = 0;
             }
         }
     }

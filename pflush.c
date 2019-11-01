@@ -41,8 +41,7 @@ uint64_t ns_to_cycles(int cpu_speed_mhz, uint64_t ns)
 
 static inline int emulate_latency_ns(int ns)
 {
-    if (ns <= 0)
-    {
+    if (ns <= 0) {
         return 0;
     }
 
@@ -52,8 +51,7 @@ static inline int emulate_latency_ns(int ns)
 
     start = asm_rdtsc();
     cycles = ns_to_cycles(global_cpu_speed_mhz, ns);
-    do
-    {
+    do {
         stop = asm_rdtsc();
     } while (stop - start < cycles);
 
@@ -64,7 +62,7 @@ static inline int emulate_latency_ns(int ns)
 Function: pflush() 
         Flush a cache line with the address addr;
 */
-void pflush(uint64_t *addr)
+void pflush(uint64_t* addr)
 {
     /* Measure the latency of a clflush and add an additional delay to
        meet the write latency to NVM 
@@ -89,7 +87,7 @@ static inline void sfence()
                      : "memory");
 }
 
-static inline void clflush(volatile void *__p)
+static inline void clflush(volatile void* __p)
 {
     asm volatile("clflush (%0)" ::"r"(__p));
 }
@@ -111,13 +109,12 @@ static inline unsigned long read_tsc(void)
     return var;
 }
 
-void persist_data(void *_data, size_t len)
+void persist_data(void* _data, size_t len)
 {
-    volatile char *data = (char *)_data;
-    volatile char *ptr = (char *)((unsigned long)data & ~(64 - 1));
-    for (; ptr < data + len; ptr += 64)
-    {
-        asm_clflush((uint64_t *)ptr);
+    volatile char* data = (char*)_data;
+    volatile char* ptr = (char*)((unsigned long)data & ~(64 - 1));
+    for (; ptr < data + len; ptr += 64) {
+        asm_clflush((uint64_t*)ptr);
         // asm_clwb((uint64_t *)ptr);
         // asm_clflushopt((uint64_t *)ptr);
     }

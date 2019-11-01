@@ -150,6 +150,7 @@ void randomwrite(struct thread_options* opt, struct test_result* result)
             }
         }
     }
+    
     timer.Stop();
     sum_time = timer.Get();
     result->time = sum_time;

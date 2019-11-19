@@ -18,7 +18,6 @@
 // #define PM_USED
 // #define PMDK_USED
 #define RANDOM_SKIP (1024)
-#define PMEM_POOL_SIZE ((size_t)450 * 1024 * 1024 * 1024)
 
 static double run_seconds = 30.0; // read-write workloads
 static int clock_used = 0; // only used in read-write mixed workloads

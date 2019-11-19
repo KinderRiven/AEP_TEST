@@ -533,7 +533,7 @@ int main(int argc, char* argv[])
     options.data_amount = 128 * 1024 * 1024;
     options.pmem_size = (size_t)2048 * 1024 * 1024;
     options.align_size = 256;
-    options.verify = 1;
+    options.verify = 0;
     options.ntstore_used = 1;
 
     for (int i = 0; i < argc; i++) {

@@ -13,10 +13,9 @@
 
 // #include <fcntl.h>
 // #include <sys/mman.h>
-#define ASSERT_VERIFY
-// #define THREAD_BIND_CPU
-// #define PM_USED
-// #define PMDK_USED
+#define THREAD_BIND_CPU
+#define PM_USED
+#define PMDK_USED
 #define RANDOM_SKIP (1024)
 
 static double run_seconds = 30.0; // read-write workloads
@@ -356,7 +355,7 @@ void* thread_task(void* opt)
 #ifdef THREAD_BIND_CPU
     cpu_set_t mask;
     CPU_ZERO(&mask);
-    CPU_SET(id + 1, &mask);
+    CPU_SET(id, &mask);
     if (pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) < 0) {
         printf("threadpool, set thread affinity failed.\n");
     }

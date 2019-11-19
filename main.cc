@@ -13,17 +13,15 @@
 
 // #include <fcntl.h>
 // #include <sys/mman.h>
-
 #define ASSERT_VERIFY
-#define THREAD_BIND_CPU
-#define PM_USED
-#define PMDK_USED
-// #define NO_ALIGN
+// #define THREAD_BIND_CPU
+// #define PM_USED
+// #define PMDK_USED
 #define RANDOM_SKIP (1024)
 #define PMEM_POOL_SIZE ((size_t)450 * 1024 * 1024 * 1024)
 
-static double run_seconds = 25.0;
-static int use_clock = 0;
+static double run_seconds = 30.0; // read-write workloads
+static int clock_used = 0; // only used in read-write mixed workloads
 static int time_is_over = 0;
 
 #define R_WRITE (0)
@@ -32,7 +30,6 @@ static int time_is_over = 0;
 #define S_READ (3)
 #define S_MIXED (4)
 #define R_MIXED (5)
-#define ALIGN_SIZE (256)
 
 struct test_result {
     uint64_t time;
@@ -42,19 +39,27 @@ struct test_result {
 };
 
 struct thread_options {
-    int id;
-    int type;
-    uint64_t addr_start;
-    uint64_t addr_end;
-    size_t write_amount;
-    size_t read_amount;
-    size_t block_size;
-    size_t count;
+    int id; // thread id
+    int type; // benchmark type
+    int verify; // use assert()
+    int align_size; // align size
+    int ntstore_used; // ntstore for write
+    int clock_used; // clock or count
+    uint64_t start_addr; // start pmem address
+    uint64_t end_addr; // end pmem address
+    size_t write_amount; // write amount
+    size_t read_amount; // read amount
+    size_t block_size; // block size
+    size_t count; // count
+    size_t run_timer; // timer (if use clock)
     struct test_result* result;
 };
 
 struct benchmark_options {
     int type;
+    int verify;
+    int align_size;
+    int ntstore_used;
     int num_thread;
     int read_thread;
     int write_thread;
@@ -63,10 +68,6 @@ struct benchmark_options {
     size_t opt_count;
     size_t data_amount;
     size_t pmem_size;
-};
-
-struct block_node {
-    uint64_t next_block_id;
 };
 
 uint64_t pm_init(const char* pool_name, size_t& pmem_size)
@@ -100,54 +101,61 @@ uint64_t pm_init(const char* pool_name, size_t& pmem_size)
     return pmem_start_address;
 }
 
-void randomwrite(struct thread_options* opt, struct test_result* result)
+void randomwrite(struct thread_options* options, struct test_result* result)
 {
     Timer timer;
-    int id = opt->id;
-    uint64_t address = (uint64_t)opt->addr_start;
-    size_t block_size = opt->block_size;
+    uint8_t* buffer = (uint8_t*)malloc(options->block_size); // memory buffer
+    uint64_t address = options->start_addr;
     uint64_t sum_time = 0;
-    size_t count = opt->write_amount / opt->block_size;
-    result->count = count;
-    size_t run_count = 0;
-    uint8_t* data = (uint8_t*)malloc(block_size);
+    uint64_t total_count = options->write_amount / options->block_size;
+    uint64_t finished_count = 0;
+    uint64_t skip_step = options->block_size < RANDOM_SKIP ? RANDOM_SKIP : options->block_size + RANDOM_SKIP;
 
-    if (address % ALIGN_SIZE != 0) {
-        address += ALIGN_SIZE;
-        address &= (~((uint64_t)ALIGN_SIZE - 1));
-        assert(address % ALIGN_SIZE == 0);
+    result->count = total_count;
+
+    if (address % options->align_size != 0) {
+        address += options->align_size;
+        address /= options->align_size;
+        address *= options->align_size;
+        assert(address % options->align_size == 0);
     }
 
-    size_t skip_step = block_size < RANDOM_SKIP ? RANDOM_SKIP : block_size + RANDOM_SKIP;
     timer.Start();
 
-    for (size_t i = 0; i < count; i++) {
-        // memcpy((void *)addr, (void *)data, block_size);
-        // persist_data((void *)addr, block_size);
-        nvmem_memcpy((char*)address, (char*)data, block_size);
-        address += skip_step; // skip 256B
+    for (size_t i = 0; i < total_count;) {
 
-        if ((uint64_t)address >= (uint64_t)opt->addr_end) {
-            address = (uint64_t)opt->addr_start;
-            if (address % ALIGN_SIZE != 0) {
-                address += ALIGN_SIZE;
-                address &= (~((uint64_t)ALIGN_SIZE - 1));
-                assert(address % ALIGN_SIZE == 0);
+        if (options->ntstore_used) {
+            nvmem_memcpy((char*)address, (char*)buffer, options->block_size);
+            address += skip_step;
+        } else {
+            memcpy((void*)address, (void*)buffer, options->block_size);
+            persist_data((void*)address, options->block_size);
+            address += skip_step;
+        }
+
+        if (address >= options->end_addr) {
+            address = options->start_addr;
+            if (address % options->align_size != 0) {
+                address += options->align_size;
+                address /= options->align_size;
+                address *= options->align_size;
+                assert(address % options->align_size == 0);
             }
         }
 
-#ifdef ASSERT_VERIFY
-        assert(address % ALIGN_SIZE == 0); // must align with 256B
-#endif
+        if (options->verify) {
+            assert(address % options->align_size == 0);
+        }
 
-        if (use_clock) {
-            run_count++;
+        if (options->clock_used) {
+            finished_count++;
             if (time_is_over) {
-                result->count = run_count;
+                result->count = finished_count;
                 break;
-            } else {
-                i = 0;
             }
+        } else {
+            i++;
+            finished_count++;
         }
     }
 
@@ -155,56 +163,61 @@ void randomwrite(struct thread_options* opt, struct test_result* result)
     sum_time = timer.Get();
     result->time = sum_time;
     result->latency = result->time / result->count;
-    result->throughput = (1000000000 / result->latency) * block_size / (1024 * 1024);
-    free(data);
+    result->throughput = (1000000000 / result->latency) * options->block_size / (1024 * 1024);
+    free(buffer);
 }
 
-void seqwrite(struct thread_options* opt, struct test_result* result)
+void seqwrite(struct thread_options* options, struct test_result* result)
 {
     Timer timer;
-    int id = opt->id;
-    uint64_t address = (uint64_t)opt->addr_start;
-    size_t block_size = opt->block_size;
+    uint8_t* buffer = (uint8_t*)malloc(options->block_size); // memory buffer
+    uint64_t address = options->start_addr;
     uint64_t sum_time = 0;
-    // size_t count = opt->count;
-    size_t count = opt->write_amount / opt->block_size;
-    result->count = count;
-    size_t run_count = 0;
-    uint8_t* data = (uint8_t*)malloc(block_size);
+    uint64_t total_count = options->write_amount / options->block_size;
+    uint64_t finished_count = 0;
+    uint64_t skip_step = options->block_size < RANDOM_SKIP ? RANDOM_SKIP : options->block_size + RANDOM_SKIP;
 
-    if (address % ALIGN_SIZE != 0) {
-        address += ALIGN_SIZE;
-        address &= (~((uint64_t)ALIGN_SIZE - 1));
-        assert(address % ALIGN_SIZE == 0);
+    result->count = total_count;
+
+    if (address % options->align_size != 0) {
+        address += options->align_size;
+        address /= options->align_size;
+        address *= options->align_size;
+        assert(address % options->align_size == 0);
     }
 
     timer.Start();
 
-    for (size_t i = 0; i < count; i++) {
+    for (size_t i = 0; i < total_count;) {
 
-        // memcpy((void *)address, (void *)data, block_size);
-        // persist_data((void *)address, block_size);
-        nvmem_memcpy((char*)address, (char*)data, block_size);
+        if (options->ntstore_used) {
+            nvmem_memcpy((char*)address, (char*)buffer, options->block_size);
+            address += options->block_size;
+        } else {
+            memcpy((void*)address, (void*)buffer, options->block_size);
+            persist_data((void*)address, options->block_size);
+            address += options->block_size;
+        }
 
-        address += block_size; // seq
-
-        if ((uint64_t)address >= (uint64_t)opt->addr_end) {
-            address = (uint64_t)opt->addr_start;
-            if (address % ALIGN_SIZE != 0) {
-                address += ALIGN_SIZE;
-                address &= (~((uint64_t)ALIGN_SIZE - 1));
-                assert(address % ALIGN_SIZE == 0);
+        if (address >= options->end_addr) {
+            address = options->start_addr;
+            if (address % options->align_size != 0) {
+                address += options->align_size;
+                address /= options->align_size;
+                address *= options->align_size;
+                assert(address % options->align_size == 0);
             }
         }
 
-        if (use_clock) {
-            run_count++;
+        if (options->clock_used) {
+            finished_count++;
             if (time_is_over) {
-                result->count = run_count;
+                result->count = finished_count;
                 break;
-            } else {
-                i = 0; // while(1)
             }
+        } else {
+            i++;
+            finished_count++;
         }
     }
 
@@ -212,61 +225,60 @@ void seqwrite(struct thread_options* opt, struct test_result* result)
     sum_time = timer.Get();
     result->time = sum_time;
     result->latency = result->time / result->count;
-    result->throughput = (1000000000 / result->latency) * block_size / (1024 * 1024);
-    free(data);
+    result->throughput = (1000000000 / result->latency) * options->block_size / (1024 * 1024);
+    free(buffer);
 }
 
-void randomread(struct thread_options* opt, struct test_result* result)
+void randomread(struct thread_options* options, struct test_result* result)
 {
     Timer timer;
-    int id = opt->id;
-    uint64_t address = (uint64_t)opt->addr_start;
-    uint64_t address_end = (uint64_t)opt->addr_end;
-    size_t block_size = opt->block_size;
+    uint8_t* buffer = (uint8_t*)malloc(options->block_size);
+    uint64_t address = options->start_addr;
     uint64_t sum_time = 0;
-    // size_t count = opt->count;
-    size_t count = opt->write_amount / opt->block_size;
-    result->count = count;
-    size_t run_count = 0;
-    uint8_t* data = (uint8_t*)malloc(block_size);
-    memset(data, 0, block_size);
+    uint64_t total_count = options->read_amount / options->block_size;
+    uint64_t finished_count = 0;
+    uint64_t skip_step = options->block_size < RANDOM_SKIP ? RANDOM_SKIP : options->block_size + RANDOM_SKIP;
 
-    if (address % ALIGN_SIZE != 0) {
-        address += ALIGN_SIZE;
-        address &= (~((uint64_t)ALIGN_SIZE - 1));
-        assert(address % ALIGN_SIZE == 0);
+    result->count = total_count;
+
+    if (address % options->align_size != 0) {
+        address += options->align_size;
+        address /= options->align_size;
+        address *= options->align_size;
+        assert(address % options->align_size == 0);
     }
 
-    size_t skip_step = block_size < RANDOM_SKIP ? RANDOM_SKIP : block_size + RANDOM_SKIP;
     timer.Start();
 
-    for (size_t i = 0; i < count; i++) {
+    for (size_t i = 0; i < total_count;) {
 
-        memcpy((void*)data, (void*)address, block_size);
+        memcpy((void*)buffer, (void*)address, options->block_size);
         asm_lfence();
-        address += skip_step; // skip 1KB
+        address += skip_step;
 
-        if ((uint64_t)address > (uint64_t)opt->addr_end) {
-            address = (uint64_t)opt->addr_start;
-            if (address % ALIGN_SIZE != 0) {
-                address += ALIGN_SIZE;
-                address &= (~((uint64_t)ALIGN_SIZE - 1));
-                assert(address % ALIGN_SIZE == 0);
+        if (address >= options->end_addr) {
+            address = options->start_addr;
+            if (address % options->align_size != 0) {
+                address += options->align_size;
+                address /= options->align_size;
+                address *= options->align_size;
+                assert(address % options->align_size == 0);
             }
         }
 
-#ifdef ASSERT_VERIFY
-        assert(address % ALIGN_SIZE == 0); // must align with 256B
-#endif
+        if (options->verify) {
+            assert(address % options->align_size == 0);
+        }
 
-        if (use_clock) {
-            run_count++;
+        if (options->clock_used) {
+            finished_count++;
             if (time_is_over) {
-                result->count = run_count;
+                result->count = finished_count;
                 break;
-            } else {
-                i = 0; // while(1)
             }
+        } else {
+            i++;
+            finished_count++;
         }
     }
 
@@ -274,53 +286,56 @@ void randomread(struct thread_options* opt, struct test_result* result)
     sum_time = timer.Get();
     result->time = sum_time;
     result->latency = result->time / result->count;
-    result->throughput = (1000000000 / result->latency) * block_size / (1024 * 1024);
-    free(data);
+    result->throughput = (1000000000 / result->latency) * options->block_size / (1024 * 1024);
+    free(buffer);
 }
 
-void seqread(struct thread_options* opt, struct test_result* result)
+void seqread(struct thread_options* options, struct test_result* result)
 {
     Timer timer;
-    int id = opt->id;
-    uint64_t address = (uint64_t)opt->addr_start;
-    size_t block_size = opt->block_size;
+    uint8_t* buffer = (uint8_t*)malloc(options->block_size);
+    uint64_t address = options->start_addr;
     uint64_t sum_time = 0;
-    size_t run_count = 0;
-    // size_t count = opt->count; // opt->write_amount / opt->block_size;
-    size_t count = opt->write_amount / opt->block_size;
-    result->count = count;
-    uint8_t* data = (uint8_t*)malloc(block_size);
+    uint64_t total_count = options->read_amount / options->block_size;
+    uint64_t finished_count = 0;
+    uint64_t skip_step = options->block_size < RANDOM_SKIP ? RANDOM_SKIP : options->block_size + RANDOM_SKIP;
 
-    if (address % ALIGN_SIZE != 0) {
-        address += ALIGN_SIZE;
-        address &= (~((uint64_t)ALIGN_SIZE - 1));
-        assert(address % ALIGN_SIZE == 0);
+    result->count = total_count;
+
+    if (address % options->align_size != 0) {
+        address += options->align_size;
+        address /= options->align_size;
+        address *= options->align_size;
+        assert(address % options->align_size == 0);
     }
 
     timer.Start();
 
-    for (size_t i = 0; i < count; i++) {
-        memcpy((void*)data, (void*)address, block_size);
-        asm_lfence();
-        address += block_size;
+    for (size_t i = 0; i < total_count;) {
 
-        if ((uint64_t)address >= (uint64_t)opt->addr_end) {
-            address = (uint64_t)opt->addr_start;
-            if (address % ALIGN_SIZE != 0) {
-                address += ALIGN_SIZE;
-                address &= (~((uint64_t)ALIGN_SIZE - 1));
-                assert(address % ALIGN_SIZE == 0);
+        memcpy((void*)buffer, (void*)address, options->block_size);
+        asm_lfence();
+        address += options->block_size;
+
+        if (address >= options->end_addr) {
+            address = options->start_addr;
+            if (address % options->align_size != 0) {
+                address += options->align_size;
+                address /= options->align_size;
+                address *= options->align_size;
+                assert(address % options->align_size == 0);
             }
         }
 
-        if (use_clock) {
-            run_count++;
+        if (options->clock_used) {
+            finished_count++;
             if (time_is_over) {
-                result->count = run_count;
+                result->count = finished_count;
                 break;
-            } else {
-                i = 0;
             }
+        } else {
+            i++;
+            finished_count++;
         }
     }
 
@@ -328,16 +343,16 @@ void seqread(struct thread_options* opt, struct test_result* result)
     sum_time = timer.Get();
     result->time = sum_time;
     result->latency = result->time / result->count;
-    result->throughput = (1000000000 / result->latency) * block_size / (1024 * 1024);
-    free(data);
+    result->throughput = (1000000000 / result->latency) * options->block_size / (1024 * 1024);
+    free(buffer);
 }
 
 void* thread_task(void* opt)
 {
     struct thread_options* options = (struct thread_options*)opt;
     int id = options->id;
-    uint64_t addr_start = options->addr_start;
-    uint64_t addr_end = options->addr_end;
+    uint64_t start_addr = options->start_addr;
+    uint64_t end_addr = options->end_addr;
 
 #ifdef THREAD_BIND_CPU
     cpu_set_t mask;
@@ -384,18 +399,8 @@ void run_benchmark(const char name[], struct benchmark_options* opt)
     uint64_t addr = pmem_start_address;
     size_t partition_size = opt->pmem_size / opt->num_thread;
 
-    // time thread
-#ifdef THREAD_BIND_CPU
-    cpu_set_t mask;
-    CPU_ZERO(&mask);
-    CPU_SET(0, &mask);
-    if (pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) < 0) {
-        printf("threadpool, set thread affinity failed.\n");
-    }
-#endif
-
-    printf(">>[Running Benchmark]\n");
-    printf("  [%s][Block Size:%zuB][Data Amount:%zuMB]\n", name, block_size, data_amount / (1024 * 1024));
+    printf(">>[Ready to run read-write mixed workloads]\n");
+    printf("  [%s][Align:%d][Block:%zuB][Data:%zuMB]\n", name, opt->align_size, block_size, data_amount / (1024 * 1024));
 
     struct thread_options opts[32];
     struct test_result res[32];
@@ -403,21 +408,18 @@ void run_benchmark(const char name[], struct benchmark_options* opt)
     for (int i = 0; i < num_thread; i++) {
         opts[i].id = i;
         opts[i].type = type;
-        opts[i].addr_start = addr;
-        /* we need to ensutre the start address is align 16B */
-        if (opts[i].addr_start % ALIGN_SIZE != 0) {
-            opts[i].addr_start += ALIGN_SIZE;
-            opts[i].addr_start &= (~((uint64_t)ALIGN_SIZE - 1));
-        }
-        assert(opts[i].addr_start % ALIGN_SIZE == 0);
-        opts[i].addr_end = addr + data_amount;
+        opts[i].clock_used = 0;
+        opts[i].verify = opt->verify;
+        opts[i].align_size = opt->align_size;
+        opts[i].ntstore_used = opt->ntstore_used;
+        opts[i].start_addr = addr;
+        opts[i].end_addr = addr + data_amount;
         opts[i].block_size = block_size;
         opts[i].result = &res[i];
         opts[i].read_amount = data_amount;
         opts[i].write_amount = data_amount;
         opts[i].count = opt->opt_count;
         addr += partition_size;
-        printf("  [Partition%d][addr:0x%llx/%llu][size:%zuMB]\n", i, (uint64_t)addr, (uint64_t)addr, partition_size / (1024 * 1024));
         pthread_create(thread_id + i, NULL, thread_task, (void*)&opts[i]);
     }
 
@@ -449,54 +451,40 @@ void run_mixed_benchmark(const char name[], struct benchmark_options* opt)
     uint64_t addr = pmem_start_address;
     size_t partition_size = opt->pmem_size / opt->num_thread;
 
-    printf(">>[Running Mixed Benchmark]\n");
-    printf("  [%s][Block Size:%zuB][Data Amount:%zuMB]\n", name, block_size, data_amount / (1024 * 1024));
+    printf(">>[Ready to run read-write mixed workloads]\n");
+    printf("  [%s][Align:%d][Block:%zuB][Data:%zuMB]\n", name, opt->align_size, block_size, data_amount / (1024 * 1024));
 
     struct thread_options opts[32];
     struct test_result res[32];
 
-    // time thread
-#ifdef THREAD_BIND_CPU
-    cpu_set_t mask;
-    CPU_ZERO(&mask);
-    CPU_SET(0, &mask);
-    if (pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) < 0) {
-        printf("threadpool, set thread affinity failed.\n");
-    }
-#endif
-
-    use_clock = 1;
+    clock_used = 1;
     time_is_over = 0;
 
     for (int i = 0; i < num_thread; i++) {
         opts[i].id = i;
+        opts[i].clock_used = 1;
+        opts[i].verify = opt->verify;
+        opts[i].align_size = opt->align_size;
+        opts[i].ntstore_used = opt->ntstore_used;
         if (i < opt->read_thread) {
             opts[i].type = (type == S_MIXED) ? S_READ : R_READ;
         } else {
             opts[i].type = (type == S_MIXED) ? S_WRITE : R_WRITE;
         }
-        opts[i].addr_start = addr;
-        /* we need to ensutre the start address is align 16B */
-        if (opts[i].addr_start % ALIGN_SIZE != 0) {
-            opts[i].addr_start += ALIGN_SIZE;
-            opts[i].addr_start &= (~((uint64_t)ALIGN_SIZE - 1));
-        }
-        assert(opts[i].addr_start % ALIGN_SIZE == 0);
-        opts[i].addr_end = addr + data_amount;
+        opts[i].start_addr = addr;
+        opts[i].end_addr = addr + data_amount;
         opts[i].block_size = block_size;
         opts[i].result = &res[i];
         opts[i].read_amount = data_amount;
         opts[i].write_amount = data_amount;
         opts[i].count = opt->opt_count;
         addr += partition_size;
-        printf("  [Partition%d][addr:0x%llx/%llu][size:%zuMB]\n", i, (uint64_t)addr, (uint64_t)addr, partition_size / (1024 * 1024));
         pthread_create(thread_id + i, NULL, thread_task, (void*)&opts[i]);
     }
 
     Timer global_clock;
     global_clock.Start();
 
-    printf(">>Clock Start!\n");
     while (true) {
         global_clock.Stop();
         if (global_clock.GetSeconds() > run_seconds) {
@@ -504,7 +492,6 @@ void run_mixed_benchmark(const char name[], struct benchmark_options* opt)
             break;
         }
     }
-    printf(">>Clock End! (%.2f)\n", global_clock.GetSeconds());
 
     for (int i = 0; i < num_thread; i++) {
         pthread_join(thread_id[i], NULL);
@@ -545,6 +532,9 @@ int main(int argc, char* argv[])
     options.block_size = 128;
     options.data_amount = 128 * 1024 * 1024;
     options.pmem_size = (size_t)2048 * 1024 * 1024;
+    options.align_size = 256;
+    options.verify = 1;
+    options.ntstore_used = 1;
 
     for (int i = 0; i < argc; i++) {
         char junk;
@@ -553,6 +543,12 @@ int main(int argc, char* argv[])
             options.block_size = n;
         } else if (sscanf(argv[i], "--num_thread=%llu%c", &n, &junk) == 1) {
             options.num_thread = n;
+        } else if (sscanf(argv[i], "--verify=%llu%c", &n, &junk) == 1) {
+            options.verify = (n == 0) ? 0 : 1;
+        } else if (sscanf(argv[i], "--align_size=%llu%c", &n, &junk) == 1) {
+            options.align_size = n;
+        } else if (sscanf(argv[i], "--ntstore=%llu%c", &n, &junk) == 1) {
+            options.ntstore_used = (n == 0) ? 0 : 1;
         } else if (sscanf(argv[i], "--data_amount=%llu%c", &n, &junk) == 1) {
             options.data_amount = n * 1024 * 1024;
         } else if (sscanf(argv[i], "--read_thread=%llu%c", &n, &junk) == 1) {

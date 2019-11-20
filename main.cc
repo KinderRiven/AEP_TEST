@@ -577,7 +577,7 @@ int main(int argc, char* argv[])
         } else if (strncmp(argv[i], "--flush=", 8) == 0) {
             strcpy(flush_type, argv[i] + 8);
         } else if (strncmp(argv[i], "--pmem_file_path=", 17) == 0) {
-            strcpy(pmem_file_path, argv[i] + 12);
+            strcpy(pmem_file_path, argv[i] + 17);
         } else if (i > 0) {
             printf("error (%s)!\n", argv[i]);
             return 0;

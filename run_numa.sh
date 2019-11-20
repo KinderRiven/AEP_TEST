@@ -3,7 +3,7 @@ block_size=(8 16 32 64 128 256 512 1024 4096 16384 65536 262144 1048576 4194304 
 test_type=(rr rw sr sw)
 num_thread=(1) # 2 4 6 8 10 12 14 16)
 
-DIR=basic
+DIR=numa
 
 data_amount=$((2*1024))
 

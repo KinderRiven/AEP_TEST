@@ -1,10 +1,14 @@
 #ifndef INCLUDE_PFLUSH_H_
 #define INCLUDE_PFLUSH_H_
 
-#include <stdlib.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+
+#define CLFLUSHOPT_USED (0)
+#define CLFLUSH_USED (1)
+#define CLWB_USED (2)
 
 /*  Cache line flush: 
     clflush can be replaced with clflushopt or clwb, if the CPU supports clflushopt or clwb.  
@@ -51,11 +55,9 @@
                                  : "memory"); \
     })
 
-void pflush(uint64_t *addr);
+void persist_data(int sync, int type, void* data, size_t len);
 
-void init_pflush(int cpu_speed_mhz, int write_latency_ns);
-
-void persist_data(void *data, size_t len);
+void nvmem_memcpy(int sync, char *dest, const char *src, size_t len);
 
 unsigned long long asm_rdtsc(void);
 

@@ -1,5 +1,4 @@
 #include "libpmem.h"
-#include "ntstore.h"
 #include "pflush.h"
 #include "timer.h"
 #include <assert.h>
@@ -13,9 +12,9 @@
 
 // #include <fcntl.h>
 // #include <sys/mman.h>
-#define THREAD_BIND_CPU
-#define PM_USED
-#define PMDK_USED
+// #define THREAD_BIND_CPU
+// #define PM_USED
+// #define PMDK_USED
 #define RANDOM_SKIP (1024)
 
 static double run_seconds = 30.0; // read-write workloads
@@ -39,6 +38,8 @@ struct test_result {
 struct thread_options {
     int id; // thread id
     int type; // benchmark type
+    int sync; // clflush + persist
+    int flush; // flush type
     int verify; // use assert()
     int align_size; // align size
     int ntstore_used; // ntstore for write
@@ -55,6 +56,8 @@ struct thread_options {
 
 struct benchmark_options {
     int type;
+    int sync;
+    int flush;
     int verify;
     int align_size;
     int ntstore_used;
@@ -123,11 +126,11 @@ void randomwrite(struct thread_options* options, struct test_result* result)
     for (size_t i = 0; i < total_count;) {
 
         if (options->ntstore_used) {
-            nvmem_memcpy((char*)address, (char*)buffer, options->block_size);
+            nvmem_memcpy(options->sync, (char*)address, (char*)buffer, options->block_size);
             address += skip_step;
         } else {
             memcpy((void*)address, (void*)buffer, options->block_size);
-            persist_data((void*)address, options->block_size);
+            persist_data(options->sync, options->flush, (void*)address, options->block_size);
             address += skip_step;
         }
 
@@ -189,11 +192,11 @@ void seqwrite(struct thread_options* options, struct test_result* result)
     for (size_t i = 0; i < total_count;) {
 
         if (options->ntstore_used) {
-            nvmem_memcpy((char*)address, (char*)buffer, options->block_size);
+            nvmem_memcpy(options->sync, (char*)address, (char*)buffer, options->block_size);
             address += options->block_size;
         } else {
             memcpy((void*)address, (void*)buffer, options->block_size);
-            persist_data((void*)address, options->block_size);
+            persist_data(options->sync, options->flush, (void*)address, options->block_size);
             address += options->block_size;
         }
 
@@ -389,6 +392,8 @@ void run_benchmark(const char name[], struct benchmark_options* opt)
 {
     pthread_t thread_id[32];
     int type = opt->type;
+    int sync = opt->sync;
+    int flush = opt->flush;
     int num_thread = opt->num_thread;
     size_t block_size = opt->block_size;
     size_t data_amount = opt->data_amount;
@@ -398,7 +403,7 @@ void run_benchmark(const char name[], struct benchmark_options* opt)
     size_t partition_size = opt->pmem_size / opt->num_thread;
 
     printf(">>[Ready to run read-write mixed workloads]\n");
-    printf("  [%s][Align:%d][Block:%zuB][Data:%zuMB]\n", name, opt->align_size, block_size, data_amount / (1024 * 1024));
+    printf("  [%s][Sync:%d][Flush:%d][Align:%d][Block:%zuB][Data:%zuMB]\n", name, opt->sync, opt->flush, opt->align_size, block_size, data_amount / (1024 * 1024));
 
     struct thread_options opts[32];
     struct test_result res[32];
@@ -406,6 +411,8 @@ void run_benchmark(const char name[], struct benchmark_options* opt)
     for (int i = 0; i < num_thread; i++) {
         opts[i].id = i;
         opts[i].type = type;
+        opts[i].sync = sync;
+        opts[i].flush = flush;
         opts[i].clock_used = 0;
         opts[i].verify = opt->verify;
         opts[i].align_size = opt->align_size;
@@ -440,6 +447,8 @@ void run_mixed_benchmark(const char name[], struct benchmark_options* opt)
 {
     pthread_t thread_id[32];
     int type = opt->type;
+    int sync = opt->sync;
+    int flush = opt->flush;
     int num_thread = opt->read_thread + opt->write_thread;
     opt->num_thread = num_thread;
     size_t block_size = opt->block_size;
@@ -450,7 +459,7 @@ void run_mixed_benchmark(const char name[], struct benchmark_options* opt)
     size_t partition_size = opt->pmem_size / opt->num_thread;
 
     printf(">>[Ready to run read-write mixed workloads]\n");
-    printf("  [%s][Align:%d][Block:%zuB][Data:%zuMB]\n", name, opt->align_size, block_size, data_amount / (1024 * 1024));
+    printf("  [%s][Sync:%d][Flush:%d][Align:%d][Block:%zuB][Data:%zuMB]\n", name, opt->sync, opt->flush, opt->align_size, block_size, data_amount / (1024 * 1024));
 
     struct thread_options opts[32];
     struct test_result res[32];
@@ -460,6 +469,8 @@ void run_mixed_benchmark(const char name[], struct benchmark_options* opt)
 
     for (int i = 0; i < num_thread; i++) {
         opts[i].id = i;
+        opts[i].sync = sync;
+        opts[i].flush = flush;
         opts[i].clock_used = 1;
         opts[i].verify = opt->verify;
         opts[i].align_size = opt->align_size;
@@ -525,6 +536,7 @@ void run_mixed_benchmark(const char name[], struct benchmark_options* opt)
 int main(int argc, char* argv[])
 {
     char test_benchmark[128] = "sw"; // sw sr rr
+    char flush_type[128] = "clflushopt"; // sw sr rr
     struct benchmark_options options;
     options.num_thread = 1;
     options.block_size = 128;
@@ -533,6 +545,8 @@ int main(int argc, char* argv[])
     options.align_size = 256;
     options.verify = 0;
     options.ntstore_used = 1;
+    options.sync = 1;
+    options.flush = CLFLUSHOPT_USED;
 
     for (int i = 0; i < argc; i++) {
         char junk;
@@ -543,6 +557,8 @@ int main(int argc, char* argv[])
             options.num_thread = n;
         } else if (sscanf(argv[i], "--verify=%llu%c", &n, &junk) == 1) {
             options.verify = (n == 0) ? 0 : 1;
+        } else if (sscanf(argv[i], "--sync=%llu%c", &n, &junk) == 1) {
+            options.sync = (n == 0) ? 0 : 1;
         } else if (sscanf(argv[i], "--align_size=%llu%c", &n, &junk) == 1) {
             options.align_size = n;
         } else if (sscanf(argv[i], "--ntstore=%llu%c", &n, &junk) == 1) {
@@ -557,10 +573,20 @@ int main(int argc, char* argv[])
             options.opt_count = n;
         } else if (strncmp(argv[i], "--benchmark=", 12) == 0) {
             strcpy(test_benchmark, argv[i] + 12);
+        } else if (strncmp(argv[i], "--flush=", 8) == 0) {
+            strcpy(flush_type, argv[i] + 8);
         } else if (i > 0) {
             printf("error (%s)!\n", argv[i]);
             return 0;
         }
+    }
+
+    if (strcmp(flush_type, "clflush") == 0) {
+        options.flush = CLFLUSH_USED;
+    } else if (strcmp(flush_type, "clwb") == 0) {
+        options.flush = CLWB_USED;
+    } else if (strcmp(flush_type, "clflushopt") == 0) {
+        options.flush = CLFLUSHOPT_USED;
     }
 
     options.pmem_start_address = pm_init("/home/pmem0/pm", options.pmem_size);

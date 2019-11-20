@@ -1,7 +1,7 @@
 block_name=(8B 16B 32B 64B 128B 256B 512B 1KB 4KB 16KB 64KB 256KB 1MB 4MB 16MB)
 block_size=(8 16 32 64 128 256 512 1024 4096 16384 65536 262144 1048576 4194304 16777216)
-flush_type=(clflush clflshopt clwb)
-num_thread=(1 2 4 6 8 10 12 14 16)
+flush_type=(clflush clflushopt clwb)
+num_thread=(1) # 2 4 6 8 10 12 14 16)
 
 DIR=flush
 

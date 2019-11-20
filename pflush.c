@@ -466,7 +466,7 @@ static inline unsigned long read_tsc(void)
 
 void persist_data(int sync, int type, void* data, size_t len)
 {
-    if (sync == 1) {
+    if (sync) {
         volatile char* buff = (char*)data;
         volatile char* ptr = (char*)((unsigned long)buff & ~(64 - 1));
         for (; ptr < buff + len; ptr += 64) {

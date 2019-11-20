@@ -12,9 +12,9 @@
 
 // #include <fcntl.h>
 // #include <sys/mman.h>
-// #define THREAD_BIND_CPU
-// #define PM_USED
-// #define PMDK_USED
+#define THREAD_BIND_CPU
+#define PM_USED
+#define PMDK_USED
 #define RANDOM_SKIP (1024)
 
 static double run_seconds = 30.0; // read-write workloads
@@ -402,7 +402,7 @@ void run_benchmark(const char name[], struct benchmark_options* opt)
     uint64_t addr = pmem_start_address;
     size_t partition_size = opt->pmem_size / opt->num_thread;
 
-    printf(">>[Ready to run read-write mixed workloads]\n");
+    printf(">>[Ready to run basic workloads]\n");
     printf("  [%s][Sync:%d][Flush:%d][Align:%d][Block:%zuB][Data:%zuMB]\n", name, opt->sync, opt->flush, opt->align_size, block_size, data_amount / (1024 * 1024));
 
     struct thread_options opts[32];
@@ -537,6 +537,7 @@ int main(int argc, char* argv[])
 {
     char test_benchmark[128] = "sw"; // sw sr rr
     char flush_type[128] = "clflushopt"; // sw sr rr
+    char pmem_file_path[128] = "/home/pmem0/pm";
     struct benchmark_options options;
     options.num_thread = 1;
     options.block_size = 128;
@@ -575,6 +576,8 @@ int main(int argc, char* argv[])
             strcpy(test_benchmark, argv[i] + 12);
         } else if (strncmp(argv[i], "--flush=", 8) == 0) {
             strcpy(flush_type, argv[i] + 8);
+        } else if (strncmp(argv[i], "--pmem_file_path=", 17) == 0) {
+            strcpy(pmem_file_path, argv[i] + 12);
         } else if (i > 0) {
             printf("error (%s)!\n", argv[i]);
             return 0;
@@ -589,7 +592,7 @@ int main(int argc, char* argv[])
         options.flush = CLFLUSHOPT_USED;
     }
 
-    options.pmem_start_address = pm_init("/home/pmem0/pm", options.pmem_size);
+    options.pmem_start_address = pm_init(pmem_file_path, options.pmem_size);
     assert(options.pmem_size >= ((size_t)options.num_thread * options.data_amount));
 
     if (memcmp(test_benchmark, "rw", 2) == 0) {

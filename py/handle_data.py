@@ -9,7 +9,7 @@ def get_latency_and_throughput(file_name):
     latency = 0
     throughput = 0
     for line in fd:
-        m = re.search('\[SUM\]\[Latency:(.*?)ns\]\[Throughtput:(.*?)MB/s\]', line)
+        m = re.search('\[SUM\]\[Latency:(.*?)ns\]\[Throughput:(.*?)MB/s\]', line)
         if not(m is None):
             latency = m.group(1)
             throughput = m.group(2)

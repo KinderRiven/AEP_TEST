@@ -572,9 +572,9 @@ int main(int argc, char* argv[])
             options.verify = (n == 0) ? 0 : 1;
         } else if (sscanf(argv[i], "--sync=%llu%c", &n, &junk) == 1) {
             options.sync = (n == 0) ? 0 : 1;
-        }  else if (sscanf(argv[i], "--numa=%llu%c", &n, &junk) == 1) {
+        } else if (sscanf(argv[i], "--numa=%llu%c", &n, &junk) == 1) {
             options.numa = (n == 0) ? 0 : 1;
-        }else if (sscanf(argv[i], "--align_size=%llu%c", &n, &junk) == 1) {
+        } else if (sscanf(argv[i], "--align_size=%llu%c", &n, &junk) == 1) {
             options.align_size = n;
         } else if (sscanf(argv[i], "--ntstore=%llu%c", &n, &junk) == 1) {
             options.ntstore_used = (n == 0) ? 0 : 1;

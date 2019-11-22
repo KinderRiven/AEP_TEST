@@ -388,7 +388,7 @@ void* thread_task(void* opt)
     }
 
     printf("  [Thread%2d][Type:%d][Count:%zu][Time:%lluseconds][Latency:%lluns][Throughput:%lluMB/s]\n",
-        id, options->type options->result->count, options->result->time / 1000000000,
+        id, options->type, options->result->count, options->result->time / 1000000000,
         options->result->latency, options->result->throughput);
     return NULL;
 }

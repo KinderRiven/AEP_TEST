@@ -12,9 +12,9 @@
 
 // #include <fcntl.h>
 // #include <sys/mman.h>
-#define THREAD_BIND_CPU
-#define PM_USED
-#define PMDK_USED
+// #define THREAD_BIND_CPU
+// #define PM_USED
+// #define PMDK_USED
 #define NUMA0
 #define RANDOM_SKIP (1024)
 
@@ -183,7 +183,6 @@ void seqwrite(struct thread_options* options, struct test_result* result)
     uint64_t sum_time = 0;
     uint64_t total_count = options->write_amount / options->block_size;
     uint64_t finished_count = 0;
-    uint64_t skip_step = options->block_size < RANDOM_SKIP ? RANDOM_SKIP : options->block_size + RANDOM_SKIP;
 
     result->count = total_count;
 
@@ -305,7 +304,6 @@ void seqread(struct thread_options* options, struct test_result* result)
     uint64_t sum_time = 0;
     uint64_t total_count = options->read_amount / options->block_size;
     uint64_t finished_count = 0;
-    uint64_t skip_step = options->block_size < RANDOM_SKIP ? RANDOM_SKIP : options->block_size + RANDOM_SKIP;
 
     result->count = total_count;
 

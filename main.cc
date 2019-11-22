@@ -12,10 +12,9 @@
 
 // #include <fcntl.h>
 // #include <sys/mman.h>
-// #define THREAD_BIND_CPU
-// #define PM_USED
-// #define PMDK_USED
-
+#define THREAD_BIND_CPU
+#define PM_USED
+#define PMDK_USED
 #define NUMA0
 #define RANDOM_SKIP (1024)
 

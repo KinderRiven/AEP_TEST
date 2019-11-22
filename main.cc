@@ -169,7 +169,7 @@ void randomwrite(struct thread_options* options, struct test_result* result)
 
     timer.Stop();
     sum_time = timer.Get();
-    result->time = sum_time;
+    result->time = sum_time / 1000000000;
     result->latency = result->time / result->count;
     result->throughput = (1000000000 / result->latency) * options->block_size / (1024 * 1024);
     free(buffer);
@@ -231,7 +231,7 @@ void seqwrite(struct thread_options* options, struct test_result* result)
 
     timer.Stop();
     sum_time = timer.Get();
-    result->time = sum_time;
+    result->time = sum_time / 1000000000;
     result->latency = result->time / result->count;
     result->throughput = (1000000000 / result->latency) * options->block_size / (1024 * 1024);
     free(buffer);
@@ -259,9 +259,8 @@ void randomread(struct thread_options* options, struct test_result* result)
     timer.Start();
 
     for (size_t i = 0; i < total_count;) {
-
         memcpy((void*)buffer, (void*)address, options->block_size);
-        asm_lfence();
+        // asm_lfence();
         address += skip_step;
 
         if (address >= options->end_addr) {
@@ -292,7 +291,7 @@ void randomread(struct thread_options* options, struct test_result* result)
 
     timer.Stop();
     sum_time = timer.Get();
-    result->time = sum_time;
+    result->time = sum_time / 1000000000;
     result->latency = result->time / result->count;
     result->throughput = (1000000000 / result->latency) * options->block_size / (1024 * 1024);
     free(buffer);
@@ -320,9 +319,8 @@ void seqread(struct thread_options* options, struct test_result* result)
     timer.Start();
 
     for (size_t i = 0; i < total_count;) {
-
         memcpy((void*)buffer, (void*)address, options->block_size);
-        asm_lfence();
+        // asm_lfence();
         address += options->block_size;
 
         if (address >= options->end_addr) {
@@ -349,7 +347,7 @@ void seqread(struct thread_options* options, struct test_result* result)
 
     timer.Stop();
     sum_time = timer.Get();
-    result->time = sum_time;
+    result->time = sum_time / 1000000000;
     result->latency = result->time / result->count;
     result->throughput = (1000000000 / result->latency) * options->block_size / (1024 * 1024);
     free(buffer);
@@ -389,8 +387,8 @@ void* thread_task(void* opt)
         break;
     }
 
-    printf("  [Thread%2d][Count:%zu][Time:%lluseconds][Latency:%lluns][Throughput:%lluMB/s]\n",
-        id, options->result->count, options->result->time,
+    printf("  [Thread%2d][Type:%d][Count:%zu][Time:%lluseconds][Latency:%lluns][Throughput:%lluMB/s]\n",
+        id, options->type, options->result->count, options->result->time,
         options->result->latency, options->result->throughput);
     return NULL;
 }

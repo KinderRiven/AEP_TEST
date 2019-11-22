@@ -169,7 +169,7 @@ void randomwrite(struct thread_options* options, struct test_result* result)
 
     timer.Stop();
     sum_time = timer.Get();
-    result->time = sum_time / 1000000000;
+    result->time = sum_time;
     result->latency = result->time / result->count;
     result->throughput = (1000000000 / result->latency) * options->block_size / (1024 * 1024);
     free(buffer);
@@ -231,7 +231,7 @@ void seqwrite(struct thread_options* options, struct test_result* result)
 
     timer.Stop();
     sum_time = timer.Get();
-    result->time = sum_time / 1000000000;
+    result->time = sum_time;
     result->latency = result->time / result->count;
     result->throughput = (1000000000 / result->latency) * options->block_size / (1024 * 1024);
     free(buffer);
@@ -291,7 +291,7 @@ void randomread(struct thread_options* options, struct test_result* result)
 
     timer.Stop();
     sum_time = timer.Get();
-    result->time = sum_time / 1000000000;
+    result->time = sum_time;
     result->latency = result->time / result->count;
     result->throughput = (1000000000 / result->latency) * options->block_size / (1024 * 1024);
     free(buffer);
@@ -347,7 +347,7 @@ void seqread(struct thread_options* options, struct test_result* result)
 
     timer.Stop();
     sum_time = timer.Get();
-    result->time = sum_time / 1000000000;
+    result->time = sum_time;
     result->latency = result->time / result->count;
     result->throughput = (1000000000 / result->latency) * options->block_size / (1024 * 1024);
     free(buffer);
@@ -388,7 +388,7 @@ void* thread_task(void* opt)
     }
 
     printf("  [Thread%2d][Type:%d][Count:%zu][Time:%lluseconds][Latency:%lluns][Throughput:%lluMB/s]\n",
-        id, options->type, options->result->count, options->result->time,
+        id, options->type options->result->count, options->result->time / 1000000000,
         options->result->latency, options->result->throughput);
     return NULL;
 }

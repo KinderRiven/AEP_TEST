@@ -18,7 +18,7 @@ do
 for ((l=0; l<${#write_thread[*]}; l+=1))
 do
 echo "running $OUTPUT/${read_thread[$k]}_${write_thread[$l]}.result"
-./main --sync=1 --ntstore=1 --verify=0 --align_size=256 --benchmark=${test_type[$i]} --block_size=${block_size[$j]} --read_thread=${read_thread[$k]} --write_thread=${write_thread[$l]} --data_amount=$data_amount > $OUTPUT/${read_thread[$k]}_${write_thread[$l]}.result
+./main --numa=0 --sync=1 --ntstore=1 --verify=0 --align_size=256 --benchmark=${test_type[$i]} --block_size=${block_size[$j]} --read_thread=${read_thread[$k]} --write_thread=${write_thread[$l]} --data_amount=$data_amount > $OUTPUT/${read_thread[$k]}_${write_thread[$l]}.result
 done
 done
 done

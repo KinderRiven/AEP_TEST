@@ -12,10 +12,16 @@
 
 // #include <fcntl.h>
 // #include <sys/mman.h>
-#define THREAD_BIND_CPU
-#define PM_USED
-#define PMDK_USED
+// #define THREAD_BIND_CPU
+// #define PM_USED
+// #define PMDK_USED
+
+#define NUMA0
 #define RANDOM_SKIP (1024)
+
+// CPU core bind
+static int numa_bind[2][20] = { { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29 },
+    { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39 } };
 
 static double run_seconds = 30.0; // read-write workloads
 static int clock_used = 0; // only used in read-write mixed workloads
@@ -40,6 +46,7 @@ struct thread_options {
     int type; // benchmark type
     int sync; // clflush + persist
     int flush; // flush type
+    int numa;
     int verify; // use assert()
     int align_size; // align size
     int ntstore_used; // ntstore for write
@@ -57,6 +64,7 @@ struct thread_options {
 struct benchmark_options {
     int type;
     int sync;
+    int numa;
     int flush;
     int verify;
     int align_size;
@@ -358,7 +366,7 @@ void* thread_task(void* opt)
 #ifdef THREAD_BIND_CPU
     cpu_set_t mask;
     CPU_ZERO(&mask);
-    CPU_SET(id, &mask);
+    CPU_SET(numa_bind[options->numa][id], &mask);
     if (pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) < 0) {
         printf("threadpool, set thread affinity failed.\n");
     }
@@ -391,6 +399,7 @@ void* thread_task(void* opt)
 void run_benchmark(const char name[], struct benchmark_options* opt)
 {
     pthread_t thread_id[32];
+    int numa = opt->numa;
     int type = opt->type;
     int sync = opt->sync;
     int flush = opt->flush;
@@ -403,7 +412,7 @@ void run_benchmark(const char name[], struct benchmark_options* opt)
     size_t partition_size = opt->pmem_size / opt->num_thread;
 
     printf(">>[Ready to run basic workloads]\n");
-    printf("  [%s][Sync:%d][Flush:%d][Align:%d][Block:%zuB][Data:%zuMB]\n", name, opt->sync, opt->flush, opt->align_size, block_size, data_amount / (1024 * 1024));
+    printf("  [%s][Numa%d][Sync:%d][Flush:%d][Align:%d][Block:%zuB][Data:%zuMB]\n", name, opt->numa, opt->sync, opt->flush, opt->align_size, block_size, data_amount / (1024 * 1024));
 
     struct thread_options opts[32];
     struct test_result res[32];
@@ -411,6 +420,7 @@ void run_benchmark(const char name[], struct benchmark_options* opt)
     for (int i = 0; i < num_thread; i++) {
         opts[i].id = i;
         opts[i].type = type;
+        opts[i].numa = numa;
         opts[i].sync = sync;
         opts[i].flush = flush;
         opts[i].clock_used = 0;
@@ -440,13 +450,14 @@ void run_benchmark(const char name[], struct benchmark_options* opt)
         total_throughput += res[i].throughput;
     }
     avg_latency /= num_thread;
-    printf("  [SUM][Latency:%lluns][Throughtput:%lluMB/s]\n", avg_latency, total_throughput);
+    printf("  [SUM][Latency:%lluns][Throughput:%lluMB/s]\n", avg_latency, total_throughput);
 }
 
 void run_mixed_benchmark(const char name[], struct benchmark_options* opt)
 {
     pthread_t thread_id[32];
     int type = opt->type;
+    int numa = opt->numa;
     int sync = opt->sync;
     int flush = opt->flush;
     int num_thread = opt->read_thread + opt->write_thread;
@@ -459,7 +470,7 @@ void run_mixed_benchmark(const char name[], struct benchmark_options* opt)
     size_t partition_size = opt->pmem_size / opt->num_thread;
 
     printf(">>[Ready to run read-write mixed workloads]\n");
-    printf("  [%s][Sync:%d][Flush:%d][Align:%d][Block:%zuB][Data:%zuMB]\n", name, opt->sync, opt->flush, opt->align_size, block_size, data_amount / (1024 * 1024));
+    printf("  [%s][Numa_%d][Sync:%d][Flush:%d][Align:%d][Block:%zuB][Data:%zuMB]\n", name, opt->numa, opt->sync, opt->flush, opt->align_size, block_size, data_amount / (1024 * 1024));
 
     struct thread_options opts[32];
     struct test_result res[32];
@@ -470,6 +481,7 @@ void run_mixed_benchmark(const char name[], struct benchmark_options* opt)
     for (int i = 0; i < num_thread; i++) {
         opts[i].id = i;
         opts[i].sync = sync;
+        opts[i].numa = numa;
         opts[i].flush = flush;
         opts[i].clock_used = 1;
         opts[i].verify = opt->verify;
@@ -528,9 +540,9 @@ void run_mixed_benchmark(const char name[], struct benchmark_options* opt)
         avg_write_latency /= opt->write_thread;
     }
 
-    printf("  [READ][Latency:%lluns][Throughtput:%lluMB/s]\n", avg_read_latency, total_read_throughput);
-    printf("  [WRITE][Latency:%lluns][Throughtput:%lluMB/s]\n", avg_write_latency, total_write_throughput);
-    printf("  [SUM][Throughtput:%lluMB/s]\n", total_read_throughput + total_write_throughput);
+    printf("  [READ][Latency:%lluns][Throughput:%lluMB/s]\n", avg_read_latency, total_read_throughput);
+    printf("  [WRITE][Latency:%lluns][Throughput:%lluMB/s]\n", avg_write_latency, total_write_throughput);
+    printf("  [SUM][Throughput:%lluMB/s]\n", total_read_throughput + total_write_throughput);
 }
 
 int main(int argc, char* argv[])
@@ -547,6 +559,7 @@ int main(int argc, char* argv[])
     options.verify = 0;
     options.ntstore_used = 1;
     options.sync = 1;
+    options.numa = 0;
     options.flush = CLFLUSHOPT_USED;
 
     for (int i = 0; i < argc; i++) {
@@ -560,7 +573,9 @@ int main(int argc, char* argv[])
             options.verify = (n == 0) ? 0 : 1;
         } else if (sscanf(argv[i], "--sync=%llu%c", &n, &junk) == 1) {
             options.sync = (n == 0) ? 0 : 1;
-        } else if (sscanf(argv[i], "--align_size=%llu%c", &n, &junk) == 1) {
+        }  else if (sscanf(argv[i], "--numa=%llu%c", &n, &junk) == 1) {
+            options.numa = (n == 0) ? 0 : 1;
+        }else if (sscanf(argv[i], "--align_size=%llu%c", &n, &junk) == 1) {
             options.align_size = n;
         } else if (sscanf(argv[i], "--ntstore=%llu%c", &n, &junk) == 1) {
             options.ntstore_used = (n == 0) ? 0 : 1;

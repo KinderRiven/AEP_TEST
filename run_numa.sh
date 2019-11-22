@@ -16,7 +16,7 @@ mkdir -p $OUTPUT
 for ((k=0; k<${#num_thread[*]}; k+=1))
 do
 echo "running $OUTPUT/${num_thread[$k]}.result"
-./main --sync=1 --ntstore=1 --verify=0 --pmem_file_path=/home/pmem1/pm --align_size=256 --benchmark=${test_type[$i]} --block_size=${block_size[$j]} --num_thread=${num_thread[$k]} --data_amount=$data_amount > $OUTPUT/${num_thread[$k]}.result
+./main --numa=1 --sync=1 --ntstore=1 --verify=0 --pmem_file_path=/home/pmem0/pm --align_size=256 --benchmark=${test_type[$i]} --block_size=${block_size[$j]} --num_thread=${num_thread[$k]} --data_amount=$data_amount > $OUTPUT/${num_thread[$k]}.result
 done
 done
 done

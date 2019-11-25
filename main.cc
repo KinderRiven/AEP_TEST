@@ -109,6 +109,16 @@ uint64_t pm_init(const char* pool_name, size_t& pmem_size)
     return pmem_start_address;
 }
 
+inline static void set_zero(void* start_address, void* end_address)
+{
+    uint8_t* v = (uint8_t*)start_address;
+    while (v != (uint8_t *)end_address) {
+        *v = 0xa5;
+        v++;
+    }
+    return;
+}
+
 void randomwrite(struct thread_options* options, struct test_result* result)
 {
     Timer timer;
@@ -257,6 +267,8 @@ void randomread(struct thread_options* options, struct test_result* result)
 
     timer.Start();
 
+    printf("[[%d]]\n", options->block_size);
+
     for (size_t i = 0; i < total_count;) {
         memcpy((void*)buffer, (void*)address, options->block_size);
         // asm_lfence();
@@ -264,6 +276,7 @@ void randomread(struct thread_options* options, struct test_result* result)
 
         if (address >= options->end_addr) {
             address = options->start_addr;
+
             if (address % options->align_size != 0) {
                 address += options->align_size;
                 address /= options->align_size;

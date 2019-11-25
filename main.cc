@@ -617,6 +617,7 @@ int main(int argc, char* argv[])
 
     options.pmem_start_address = pm_init(pmem_file_path, options.pmem_size);
     assert(options.pmem_size >= ((size_t)options.num_thread * options.data_amount));
+    set_zero((void *)options.pmem_start_address, (void *)(options.pmem_start_address + (size_t)options.num_thread * options.data_amount));
 
     if (memcmp(test_benchmark, "rw", 2) == 0) {
         options.type = R_WRITE;

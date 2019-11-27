@@ -13,5 +13,5 @@ chmod 777 ./run_flush.sh
 chmod 777 ./run_numa.sh
 ./run_numa.sh
 
-chmod 777 ./run_mixed.sh
-./run_mixed.sh
+# chmod 777 ./run_mixed.sh
+# ./run_mixed.sh

@@ -1,9 +1,9 @@
-block_name=(1_8B 2_16B 3_32B 4_64B 5_128B 6_256B 7_512B 8_1KB 9_4KB 10_16KB 11_64KB 12_256KB 13_1MB 14_4MB 15_16MB)
-block_size=(8 16 32 64 128 256 512 1024 4096 16384 65536 262144 1048576 4194304 16777216)
+block_name=(64B 256B 1KB 4KB 64KB 256KB 1MB 4MB)
+block_size=(64 256 1024 4096 65536 262144 1048576 4194304)
 test_type=(rr rw sr sw)
-num_thread=(1 2 4 6 8 10 12 14 16)
+num_thread=(1 2 3 4 5 6 7 8)
 
-DIR=basic
+DIR=no_mixed
 
 data_amount=$((2*1024))
 

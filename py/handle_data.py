@@ -18,7 +18,7 @@ def get_latency_and_throughput(file_name):
 
 
 m_dir = '2019_11_27'
-m_obj = ['basic', 'align', 'flush', 'async', 'numa']
+m_obj = ['basic'] #, 'align', 'flush', 'async', 'numa']
 # m_obj = ['basic', 'numa']
 
 latency_excel = xlwt.Workbook(encoding='utf-8')

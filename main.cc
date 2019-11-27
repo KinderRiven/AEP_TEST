@@ -17,12 +17,13 @@
 #define PMDK_USED
 #define NUMA0
 #define RANDOM_SKIP (1024)
+#define MAX_OPT_LIMIT (2500000)
 
 // CPU core bind
 static int numa_bind[2][20] = { { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29 },
     { 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39 } };
 
-static double run_seconds = 30.0; // read-write workloads
+static double run_seconds = 15.0; // read-write workloads
 static int clock_used = 0; // only used in read-write mixed workloads
 static int time_is_over = 0;
 
@@ -112,7 +113,7 @@ uint64_t pm_init(const char* pool_name, size_t& pmem_size)
 inline static void set_zero(void* start_address, void* end_address)
 {
     uint8_t* v = (uint8_t*)start_address;
-    while (v != (uint8_t *)end_address) {
+    while (v != (uint8_t*)end_address) {
         *v = 0xa5;
         v++;
     }
@@ -128,6 +129,10 @@ void randomwrite(struct thread_options* options, struct test_result* result)
     uint64_t total_count = options->write_amount / options->block_size;
     uint64_t finished_count = 0;
     uint64_t skip_step = options->block_size < RANDOM_SKIP ? RANDOM_SKIP : options->block_size + RANDOM_SKIP;
+
+    if (total_count > MAX_OPT_LIMIT) {
+        total_count = MAX_OPT_LIMIT;
+    }
 
     result->count = total_count;
 
@@ -194,6 +199,10 @@ void seqwrite(struct thread_options* options, struct test_result* result)
     uint64_t total_count = options->write_amount / options->block_size;
     uint64_t finished_count = 0;
 
+    if (total_count > MAX_OPT_LIMIT) {
+        total_count = MAX_OPT_LIMIT;
+    }
+
     result->count = total_count;
 
     if (address % options->align_size != 0) {
@@ -256,6 +265,10 @@ void randomread(struct thread_options* options, struct test_result* result)
     uint64_t finished_count = 0;
     uint64_t skip_step = options->block_size < RANDOM_SKIP ? RANDOM_SKIP : options->block_size + RANDOM_SKIP;
 
+    if (total_count > MAX_OPT_LIMIT) {
+        total_count = MAX_OPT_LIMIT;
+    }
+
     result->count = total_count;
 
     if (address % options->align_size != 0) {
@@ -316,6 +329,10 @@ void seqread(struct thread_options* options, struct test_result* result)
     uint64_t sum_time = 0;
     uint64_t total_count = options->read_amount / options->block_size;
     uint64_t finished_count = 0;
+
+    if (total_count > MAX_OPT_LIMIT) {
+        total_count = MAX_OPT_LIMIT;
+    }
 
     result->count = total_count;
 

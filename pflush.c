@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #define FLUSH_ALIGN ((uintptr_t)64)
+// #define FLUSH_OPT
 #define _mm_clflushopt(addr)              \
     asm volatile(".byte 0x66; clflush %0" \
                  : "+m"(*(volatile char*)(addr)));
@@ -281,6 +282,9 @@ memmove_movnt_sse_fw(char* dest, const char* src, size_t len)
         dest += 4 * 64;
         src += 4 * 64;
         len -= 4 * 64;
+#ifdef FLUSH_OPT
+        _mm_sfence();
+#endif
     }
 
     if (len >= 2 * 64) {
@@ -332,7 +336,9 @@ memmove_movnt_sse_bw(char* dest, const char* src, size_t len)
         src -= 4 * 64;
         len -= 4 * 64;
         memmove_movnt4x64b(dest, src);
+#ifdef FLUSH_OPT
         _mm_sfence();
+#endif
     }
 
     if (len >= 2 * 64) {
@@ -340,7 +346,7 @@ memmove_movnt_sse_bw(char* dest, const char* src, size_t len)
         src -= 2 * 64;
         len -= 2 * 64;
         memmove_movnt2x64b(dest, src);
-        _mm_sfence();
+        // _mm_sfence();
     }
 
     if (len >= 1 * 64) {
@@ -348,7 +354,7 @@ memmove_movnt_sse_bw(char* dest, const char* src, size_t len)
         src -= 1 * 64;
         len -= 1 * 64;
         memmove_movnt1x64b(dest, src);
-        _mm_sfence();
+        // _mm_sfence();
     }
 
     if (len == 0) {

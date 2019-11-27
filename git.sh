@@ -1,8 +1,10 @@
-git add *.c *.h *.cc *.sh
-git add README.md
-git add pmdk
 git add aep_test
 git add dram_test
-git add py/handle_data.py
-git commit -m "aep tester"
+git add pmdk
+git add py/*.py
+git add git.sh
+git add *.c *.cc *.h
+git add Makefile
+git add README.md
+git commit -m "test"
 git push

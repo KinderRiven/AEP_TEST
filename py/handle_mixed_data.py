@@ -23,8 +23,8 @@ def get_latency_and_throughput(file_name):
     return read_latency, read_throughput, write_latency, write_throughput
 
 
-m_dir = '2019_11_25'
-m_obj = ['mixed']
+m_dir = '2019_11_27'
+m_obj = ['mixed/mixed']
 
 latency_excel = xlwt.Workbook(encoding='utf-8')
 throughput_excel = xlwt.Workbook(encoding='utf-8')

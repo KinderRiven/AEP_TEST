@@ -17,9 +17,9 @@ def get_latency_and_throughput(file_name):
     return latency, throughput
 
 
-m_dir = '2019_11_27'
-m_obj = ['basic'] #, 'align', 'flush', 'async', 'numa']
-# m_obj = ['basic', 'numa']
+m_dir = '2019_11_27/sfence'
+# m_obj = ['basic', 'align', 'flush', 'async', 'numa']
+m_obj = ['sfence']
 
 latency_excel = xlwt.Workbook(encoding='utf-8')
 throughput_excel = xlwt.Workbook(encoding='utf-8')
@@ -48,5 +48,5 @@ for obj in m_obj:  # 2019/basic
                 b += 1
             a += 1
 
-latency_excel.save(m_dir + '_aep_latency.xls')
-throughput_excel.save(m_dir + '_aep_throughput.xls')
+latency_excel.save(m_dir + '_dram_latency.xls')
+throughput_excel.save(m_dir + '_dram_throughput.xls')

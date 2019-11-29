@@ -6,7 +6,7 @@ threads_len=9
 nr_files=1
 all_size=322122547200
 
-cpus=('0-23' '0-23'  '0-23'  '24-47,72-95' '0-23,48-71')
+cpus=('0-9,20-29' '0-9,20-29'  '0-9,20-29'  '0-9,20-29' '0-9,20-29')
 name=('a'  'a' 'a'  'a' '01' 'a' '0111' '0110' '0001' )
 files_s=3
 files_len=4
@@ -37,7 +37,8 @@ fallocate="--fallocate=0"
 runtime=60
 
 rm -rf *.results
-pre_size=397284474880
+# pre_size=397284474880
+pre_size=$((1024*1024))
 fio --filename=$dev_name -rw=trim -ioengine=libaio --direct=1 -bs=128KB -name=test -iodepth=1 -size=$pre_size --nrfiles=1 --numjobs=1 
 fio --filename=$dev_name -rw=write -ioengine=libaio --direct=1 -bs=128KB -name=test -iodepth=1 -size=$pre_size --nrfiles=1 --numjobs=1 
 fio --filename=$dev_name -rw=randwrite -ioengine=libaio --direct=1 -bs=4KB -name=test -iodepth=1 -size=$pre_size  --nrfiles=1  --numjobs=1 

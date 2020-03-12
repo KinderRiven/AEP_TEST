@@ -5,7 +5,7 @@ num_thread=(1 2 4 6 8 10 12 14 16)
 
 DIR=basic
 
-data_amount=$((2*1024))
+data_amount=$((32*1024))
 
 for ((i=0; i<${#test_type[*]}; i+=1))
 do

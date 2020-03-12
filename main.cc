@@ -135,7 +135,6 @@ void randomwrite(struct thread_options* options, struct test_result* result)
     }
 
     result->count = total_count;
-
     if (address % options->align_size != 0) {
         address += options->align_size;
         address /= options->align_size;
@@ -144,9 +143,7 @@ void randomwrite(struct thread_options* options, struct test_result* result)
     }
 
     timer.Start();
-
     for (size_t i = 0; i < total_count;) {
-
         if (options->ntstore_used) {
             nvmem_memcpy(options->sync, (char*)address, (char*)buffer, options->block_size);
             address += skip_step;
@@ -155,7 +152,6 @@ void randomwrite(struct thread_options* options, struct test_result* result)
             persist_data(options->sync, options->flush, (void*)address, options->block_size);
             address += skip_step;
         }
-
         if (address >= options->end_addr) {
             address = options->start_addr;
             if (address % options->align_size != 0) {
@@ -165,11 +161,9 @@ void randomwrite(struct thread_options* options, struct test_result* result)
                 assert(address % options->align_size == 0);
             }
         }
-
         if (options->verify) {
             assert(address % options->align_size == 0);
         }
-
         if (options->clock_used) {
             finished_count++;
             if (time_is_over) {
@@ -181,7 +175,6 @@ void randomwrite(struct thread_options* options, struct test_result* result)
             finished_count++;
         }
     }
-
     timer.Stop();
     sum_time = timer.Get();
     result->time = sum_time;
@@ -213,9 +206,7 @@ void seqwrite(struct thread_options* options, struct test_result* result)
     }
 
     timer.Start();
-
     for (size_t i = 0; i < total_count;) {
-
         if (options->ntstore_used) {
             nvmem_memcpy(options->sync, (char*)address, (char*)buffer, options->block_size);
             address += options->block_size;
@@ -224,7 +215,6 @@ void seqwrite(struct thread_options* options, struct test_result* result)
             persist_data(options->sync, options->flush, (void*)address, options->block_size);
             address += options->block_size;
         }
-
         if (address >= options->end_addr) {
             address = options->start_addr;
             if (address % options->align_size != 0) {
@@ -234,7 +224,6 @@ void seqwrite(struct thread_options* options, struct test_result* result)
                 assert(address % options->align_size == 0);
             }
         }
-
         if (options->clock_used) {
             finished_count++;
             if (time_is_over) {
@@ -246,7 +235,6 @@ void seqwrite(struct thread_options* options, struct test_result* result)
             finished_count++;
         }
     }
-
     timer.Stop();
     sum_time = timer.Get();
     result->time = sum_time;
@@ -270,14 +258,12 @@ void randomread(struct thread_options* options, struct test_result* result)
     }
 
     result->count = total_count;
-
     if (address % options->align_size != 0) {
         address += options->align_size;
         address /= options->align_size;
         address *= options->align_size;
         assert(address % options->align_size == 0);
     }
-
     timer.Start();
     printf("[[%d]]\n", options->block_size);
     for (size_t i = 0; i < total_count;) {

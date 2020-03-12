@@ -17,7 +17,7 @@
 #define PMDK_USED
 #define NUMA0
 #define RANDOM_SKIP (1024)
-#define MAX_OPT_LIMIT (2500000)
+#define MAX_OPT_LIMIT (20000000)
 
 // CPU core bind
 static int numa_bind[2][20] = { { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29 },

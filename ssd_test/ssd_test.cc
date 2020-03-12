@@ -199,9 +199,9 @@ int main(int argc, char** argv)
     struct thread_options options[32];
     int access_type = atol(argv[1]);
     int io_type = atol(argv[2]);
-    int num_thread = atol(argv[2]);
-    size_t block_size = atol(argv[3]); // B
-    size_t total_size = atol(argv[4]); // MB
+    int num_thread = atol(argv[3]);
+    size_t block_size = atol(argv[4]); // B
+    size_t total_size = atol(argv[5]); // MB
     total_size *= (1024 * 1024);
 
     for (int i = 0; i < num_thread; i++) {

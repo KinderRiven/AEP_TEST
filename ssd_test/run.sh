@@ -10,7 +10,7 @@ rm -rf /home/hanshukai/optane/*.io
 for ((j=1; j<=2; j++))
 do
 # perf record ./tester $i 1 $BLOCK_SIZE $TOTAL_SIZE
-./tester $j 2 1 ${block_size[$i]} $TOTAL_SIZE > $RESULT_PATH/${block_name[$i]}
+./tester $j 2 1 ${block_size[$i]} $TOTAL_SIZE > $RESULT_PATH/${block_name[$i]}_$j
 # mv perf.data $RESULT_PATH/$i_$j
 sync && echo 3 > /proc/sys/vm/drop_caches
 done

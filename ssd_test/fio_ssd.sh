@@ -34,9 +34,8 @@ fio --filename=$dev_name -rw=trim -ioengine=libaio --direct=1 -bs=128KB -name=te
 fio --filename=$dev_name -rw=write -ioengine=libaio --direct=1 -bs=128KB -name=test -iodepth=1 -size=$pre_size --nrfiles=1 --numjobs=1 
 fio --filename=$dev_name -rw=randwrite -ioengine=libaio --direct=1 -bs=4KB -name=test -iodepth=1 -size=$pre_size  --nrfiles=1  --numjobs=1 
 
-
 for((io=$io_s; io<$io_len; ++io)); # libio
-    do
+do
     for((t=$type_s; t<$type_len; ++t)); # randomread 
     do
         for((i=$threads_s; i<$threads_len; ++i)); # thread
@@ -45,7 +44,7 @@ for((io=$io_s; io<$io_len; ++io)); # libio
             do
                 for((times=0; times<$test_times; ++times)); 
                 do
-                fio --filename=$dev_name -rw=${type[$t]} -ioengine=${ioengine[$io]} -runtime=$runtime -time_based --direct=1 -bs=${bs_size[$size]} -name=test -iodepth=1 -size=$all_size $fallocate  --nrfiles=${nr_files} --cpus_allowed=${cpus[$f]} --numjobs=${threads[$i]} > ${type[$t]}_${ioengine[$io]}_${bs_size[$size]}_${threads[$i]}.results
+                fio --filename=$dev_name -rw=${type[$t]} -ioengine=${ioengine[$io]} -runtime=$runtime -time_based --direct=0 -bs=${bs_size[$size]} -name=test -iodepth=1 -size=$all_size $fallocate  --nrfiles=${nr_files} --cpus_allowed=${cpus[$f]} --numjobs=${threads[$i]} > ${type[$t]}_${ioengine[$io]}_${bs_size[$size]}_${threads[$i]}.results
                 done
             done
         done

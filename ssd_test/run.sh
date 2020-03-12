@@ -1,10 +1,10 @@
 BLOCK_SIZE=$((1*4096))
 TOTAL_SIZE=$((16*1024))
 
-mkdir $RESULT_PATH
-for ((i=1; i<=3; i++))
+rm -rf /home/hanshukai/optane/*.io
+
+for ((i=1; i<=2; i++))
 do
-rm -rf 0.io
 for ((j=1; j<=1; j++))
 do
 # perf record ./tester $i 1 $BLOCK_SIZE $TOTAL_SIZE

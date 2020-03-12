@@ -164,21 +164,21 @@ void* run_benchmark(void* options)
     } else if (opt->io_type == IO_LIBAIO) {
         fd = open(file_name, O_RDWR | O_DIRECT | O_CREAT, 0777);
     }
-    
+
     Timer timer;
     timer.Start();
     switch (opt->io_type) {
     case IO_READ_WRITE:
-        io_read_write(access_type, fd, opt->block_size, opt->total_size);
+        io_read_write(opt->access_type, fd, opt->block_size, opt->total_size);
         break;
     case IO_DIRECT_ACCESS:
-        io_direct_access(access_type, fd, opt->block_size, opt->total_size);
+        io_direct_access(opt->access_type, fd, opt->block_size, opt->total_size);
         break;
     case IO_MMAP:
-        io_mmap(access_type, fd, opt->block_size, opt->total_size);
+        io_mmap(opt->access_type, fd, opt->block_size, opt->total_size);
         break;
     case IO_LIBAIO:
-        io_libaio(access_type, fd, opt->block_size, opt->total_size);
+        io_libaio(opt->access_type, fd, opt->block_size, opt->total_size);
         break;
     }
     timer.Stop();

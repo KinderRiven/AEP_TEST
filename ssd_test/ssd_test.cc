@@ -185,7 +185,7 @@ void* run_benchmark(void* options)
     double seconds = timer.GetSeconds();
     double latency = 1000000000.0 * seconds / (opt->total_size / opt->block_size);
     double iops = 1000000000.0 / latency;
-    printf("[%d][TIME:%.2f][IOPS:%.2f]\n", opt->thread_id, seconds, iops);
+    printf("[%d][TIME:%.2f][IOPS:%.2f][Latency:%.2fns]\n", opt->thread_id, seconds, iops, latency);
     opt->iops = iops;
     close(fd);
     return NULL;

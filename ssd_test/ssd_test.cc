@@ -227,6 +227,6 @@ int main(int argc, char** argv)
     for (int i = 0; i < num_thread; i++) {
         sum_iops += options[i].iops;
     }
-    printf("[SUM][TYPE:%d][IOPS:%.2f][BW:%.2fMB/s]\n", type, sum_iops, sum_iops * block_size / (1024 * 1024));
+    printf("[SUM][TYPE:%d][IOPS:%.2f][BW:%.2fMB/s]\n", access_type, sum_iops, sum_iops * block_size / (1024 * 1024));
     return 0;
 }

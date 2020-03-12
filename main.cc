@@ -279,14 +279,11 @@ void randomread(struct thread_options* options, struct test_result* result)
     }
 
     timer.Start();
-
     printf("[[%d]]\n", options->block_size);
-
     for (size_t i = 0; i < total_count;) {
         memcpy((void*)buffer, (void*)address, options->block_size);
         // asm_lfence();
         address += skip_step;
-
         if (address >= options->end_addr) {
             address = options->start_addr;
             if (address % options->align_size != 0) {
@@ -296,11 +293,9 @@ void randomread(struct thread_options* options, struct test_result* result)
                 assert(address % options->align_size == 0);
             }
         }
-
         if (options->verify) {
             assert(address % options->align_size == 0);
         }
-
         if (options->clock_used) {
             finished_count++;
             if (time_is_over) {
@@ -312,7 +307,6 @@ void randomread(struct thread_options* options, struct test_result* result)
             finished_count++;
         }
     }
-
     timer.Stop();
     sum_time = timer.Get();
     result->time = sum_time;
@@ -344,12 +338,10 @@ void seqread(struct thread_options* options, struct test_result* result)
     }
 
     timer.Start();
-
     for (size_t i = 0; i < total_count;) {
         memcpy((void*)buffer, (void*)address, options->block_size);
         // asm_lfence();
         address += options->block_size;
-
         if (address >= options->end_addr) {
             address = options->start_addr;
             if (address % options->align_size != 0) {
@@ -359,7 +351,6 @@ void seqread(struct thread_options* options, struct test_result* result)
                 assert(address % options->align_size == 0);
             }
         }
-
         if (options->clock_used) {
             finished_count++;
             if (time_is_over) {
@@ -371,7 +362,6 @@ void seqread(struct thread_options* options, struct test_result* result)
             finished_count++;
         }
     }
-
     timer.Stop();
     sum_time = timer.Get();
     result->time = sum_time;

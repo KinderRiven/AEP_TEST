@@ -17,7 +17,7 @@
 #define PMDK_USED
 #define NUMA0
 #define RANDOM_SKIP (1024)
-#define MAX_OPT_LIMIT (20000000)
+#define MAX_OPT_LIMIT (10000000)
 
 // CPU core bind
 static int numa_bind[2][20] = { { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29 },
@@ -505,6 +505,15 @@ void run_mixed_benchmark(const char name[], struct benchmark_options* opt)
 
     Timer global_clock;
     global_clock.Start();
+
+#ifdef THREAD_BIND_CPU
+    cpu_set_t mask;
+    CPU_ZERO(&mask);
+    CPU_SET(numa_bind[0][0], &mask);
+    if (pthread_setaffinity_np(pthread_self(), sizeof(mask), &mask) < 0) {
+        printf("threadpool, set thread affinity failed.\n");
+    }
+#endif
 
     while (true) {
         global_clock.Stop();

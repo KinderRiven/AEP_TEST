@@ -471,7 +471,7 @@ void run_mixed_benchmark(const char name[], struct benchmark_options* opt)
     size_t partition_size = opt->pmem_size / opt->num_thread;
 
     printf(">>[Ready to run read-write mixed workloads]\n");
-    printf("  [%s][Numa_%d][Sync:%d][Flush:%d][Align:%d][Block:%zuB][Data:%zuMB]\n", name, opt->numa, opt->sync, opt->flush, opt->align_size, block_size, data_amount / (1024 * 1024));
+    printf("  [%s][Numa_%d][Sync:%d][Flush:%d][Align:%d][Block:%zu/%zuB][Data:%zuMB]\n", name, opt->numa, opt->sync, opt->flush, opt->align_size, opt->read_block_size, opt->write_block_size, data_amount / (1024 * 1024));
 
     struct thread_options opts[32];
     struct test_result res[32];

@@ -74,6 +74,8 @@ struct benchmark_options {
     int write_thread;
     uint64_t pmem_start_address;
     size_t block_size;
+    size_t write_block_size;
+    size_t read_block_size;
     size_t opt_count;
     size_t data_amount;
     size_t pmem_size;
@@ -462,7 +464,6 @@ void run_mixed_benchmark(const char name[], struct benchmark_options* opt)
     int flush = opt->flush;
     int num_thread = opt->read_thread + opt->write_thread;
     opt->num_thread = num_thread;
-    size_t block_size = opt->block_size;
     size_t data_amount = opt->data_amount;
     size_t pmem_size = opt->pmem_size;
     uint64_t pmem_start_address = opt->pmem_start_address;
@@ -489,12 +490,13 @@ void run_mixed_benchmark(const char name[], struct benchmark_options* opt)
         opts[i].ntstore_used = opt->ntstore_used;
         if (i < opt->read_thread) {
             opts[i].type = (type == S_MIXED) ? S_READ : R_READ;
+            opts[i].block_size = opt->read_block_size;
         } else {
             opts[i].type = (type == S_MIXED) ? S_WRITE : R_WRITE;
+            opts[i].block_size = opt->write_block_size;
         }
         opts[i].start_addr = addr;
         opts[i].end_addr = addr + data_amount;
-        opts[i].block_size = block_size;
         opts[i].result = &res[i];
         opts[i].read_amount = data_amount;
         opts[i].write_amount = data_amount;
@@ -576,6 +578,10 @@ int main(int argc, char* argv[])
         uint64_t n;
         if (sscanf(argv[i], "--block_size=%llu%c", &n, &junk) == 1) {
             options.block_size = n;
+        } else if (sscanf(argv[i], "--rb=%llu%c", &n, &junk) == 1) {
+            options.read_block_size = n;
+        } else if (sscanf(argv[i], "--wb=%llu%c", &n, &junk) == 1) {
+            options.write_block_size = n;
         } else if (sscanf(argv[i], "--num_thread=%llu%c", &n, &junk) == 1) {
             options.num_thread = n;
         } else if (sscanf(argv[i], "--verify=%llu%c", &n, &junk) == 1) {
